@@ -84,6 +84,11 @@ EOS_EResult EOSSDK_LobbyDetails::CopyInfo(const EOS_LobbyDetails_CopyInfoOptions
         char* str = new char[len];
         strncpy(str, _infos.lobby_id().c_str(), len);
         pLobbyDetailsInfos->LobbyId = str;
+
+        len = _infos.bucket_id().length() + 1;
+        str = new char[len];
+        strncpy(str, _infos.bucket_id().c_str(), len);
+        pLobbyDetailsInfos->BucketId = str;
     }
     
     pLobbyDetailsInfos->LobbyOwnerUserId = GetProductUserId(_infos.owner_id());
@@ -91,6 +96,13 @@ EOS_EResult EOSSDK_LobbyDetails::CopyInfo(const EOS_LobbyDetails_CopyInfoOptions
     pLobbyDetailsInfos->AvailableSlots = _infos.max_lobby_member() - _infos.members_size();
     pLobbyDetailsInfos->MaxMembers = _infos.max_lobby_member();
     pLobbyDetailsInfos->bAllowInvites = EOS_TRUE;
+    pLobbyDetailsInfos->bAllowHostMigration = EOS_TRUE;
+    pLobbyDetailsInfos->bRTCRoomEnabled = EOS_TRUE;
+    pLobbyDetailsInfos->bAllowJoinById = EOS_TRUE;
+    pLobbyDetailsInfos->bRejoinAfterKickRequiresInvite = EOS_TRUE;
+    pLobbyDetailsInfos->bPresenceEnabled = EOS_TRUE;
+    pLobbyDetailsInfos->AllowedPlatformIds = NULL;
+    pLobbyDetailsInfos->AllowedPlatformIdsCount = 0;
 
     *OutLobbyDetailsInfo = pLobbyDetailsInfos;
     return EOS_EResult::EOS_Success;
