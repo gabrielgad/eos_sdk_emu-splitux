@@ -22,101 +22,10 @@ EOS_STRUCT(EOS_LobbyDetails_Info001, (
 	EOS_Bool bAllowInvites;
 ));
 
-/** The most recent version of the EOS_Lobby_CreateLobby API. */
-#define EOS_LOBBY_CREATELOBBY_API_002 2
-
-/**
- * Input parameters for the EOS_Lobby_CreateLobby function.
- */
-EOS_STRUCT(EOS_Lobby_CreateLobbyOptions002, (
-	/** API Version: Set this to EOS_LOBBY_CREATELOBBY_API_LATEST. */
-	int32_t ApiVersion;
-	/** The Product User ID of the local user creating the lobby; this user will automatically join the lobby as its owner */
-	EOS_ProductUserId LocalUserId;
-	/** The maximum number of users who can be in the lobby at a time */
-	uint32_t MaxLobbyMembers;
-	/** The initial permission level of the lobby */
-	EOS_ELobbyPermissionLevel PermissionLevel;
-	/** If true, this lobby will be associated with presence information. A user's presence can only be associated with one lobby at a time.
-	 * This affects the ability of the Social Overlay to show game related actions to take in the user's social graph.
-	 *
-	 * @note The Social Overlay can handle only one of the following three options at a time:
-	 * * using the bPresenceEnabled flags within the Sessions interface
-	 * * using the bPresenceEnabled flags within the Lobby interface
-	 * * using EOS_PresenceModification_SetJoinInfo
-	 *
-	 * @see EOS_PresenceModification_SetJoinInfoOptions
-	 * @see EOS_Lobby_JoinLobbyOptions
-	 * @see EOS_Sessions_CreateSessionModificationOptions
-	 * @see EOS_Sessions_JoinSessionOptions
-	 */
-	EOS_Bool bPresenceEnabled;
-));
-
-
-/** The most recent version of the EOS_Lobby_JoinLobby API. */
-#define EOS_LOBBY_JOINLOBBY_API_002 2
-
-/**
- * Input parameters for the EOS_Lobby_JoinLobby function.
- */
-EOS_STRUCT(EOS_Lobby_JoinLobbyOptions002, (
-	/** API Version: Set this to EOS_LOBBY_JOINLOBBY_API_LATEST. */
-	int32_t ApiVersion;
-	/** The handle of the lobby to join */
-	EOS_HLobbyDetails LobbyDetailsHandle;
-	/** The Product User ID of the local user joining the lobby */
-	EOS_ProductUserId LocalUserId;
-	/** If true, this lobby will be associated with the user's presence information. A user can only associate one lobby at a time with their presence information.
-	 * This affects the ability of the Social Overlay to show game related actions to take in the user's social graph.
-	 *
-	 * @note The Social Overlay can handle only one of the following three options at a time:
-	 * * using the bPresenceEnabled flags within the Sessions interface
-	 * * using the bPresenceEnabled flags within the Lobby interface
-	 * * using EOS_PresenceModification_SetJoinInfo
-	 *
-	 * @see EOS_PresenceModification_SetJoinInfoOptions
-	 * @see EOS_Lobby_CreateLobbyOptions
-	 * @see EOS_Lobby_JoinLobbyOptions
-	 * @see EOS_Sessions_CreateSessionModificationOptions
-	 * @see EOS_Sessions_JoinSessionOptions
-	 */
-	EOS_Bool bPresenceEnabled;
-));
-
 /**
  * Function prototype definition for callbacks passed to EOS_Lobby_JoinLobby
  * @param Data A EOS_Lobby_JoinLobby CallbackInfo containing the output information and result
  */
 EOS_DECLARE_CALLBACK(EOS_Lobby_OnJoinLobbyCallback, const EOS_Lobby_JoinLobbyCallbackInfo* Data);
 
-/** The most recent version of the EOS_LobbyModification_AddAttribute API. */
-#define EOS_LOBBYMODIFICATION_ADDATTRIBUTE_API_001 1
-
-/**
- * Input parameters for the EOS_LobbyModification_AddAttribute function.
- */
-EOS_STRUCT(EOS_LobbyModification_AddAttributeOptions001, (
-	/** API Version: Set this to EOS_LOBBYMODIFICATION_ADDATTRIBUTE_API_LATEST. */
-	int32_t ApiVersion;
-	/** Key/Value pair describing the attribute to add to the lobby */
-	const EOS_Lobby_AttributeData* Attribute;
-	/** Is this attribute public or private to the lobby and its members */
-	EOS_ELobbyAttributeVisibility Visibility;
-));
-
-/** The most recent version of the EOS_LobbyModification_AddMemberAttribute API. */
-#define EOS_LOBBYMODIFICATION_ADDMEMBERATTRIBUTE_API_001 1
-
-/**
- * Input parameters for the EOS_LobbyModification_AddMemberAttribute function.
- */
-EOS_STRUCT(EOS_LobbyModification_AddMemberAttributeOptions001, (
-	/** API Version: Set this to EOS_LOBBYMODIFICATION_ADDMEMBERATTRIBUTE_API_LATEST. */
-	int32_t ApiVersion;
-	/** Key/Value pair describing the attribute to add to the lobby member */
-	const EOS_Lobby_AttributeData* Attribute;
-	/** Is this attribute public or private to the rest of the lobby members */
-	EOS_ELobbyAttributeVisibility Visibility;
-));
 #pragma pack(pop)

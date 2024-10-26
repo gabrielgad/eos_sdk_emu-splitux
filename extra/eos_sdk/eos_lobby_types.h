@@ -71,6 +71,7 @@ enum { k_iLobbyCallbackBase = 7000 };
 #include "eos_lobby_types1.12.0.h"
 #include "eos_lobby_types1.11.0.h"
 #include "eos_lobby_types1.10.2.h"
+#include "eos_lobby_types1.8.0.h"
 #include "eos_lobby_types1.6.0.h"
 
 #define EOS_LOBBYDETAILS_INFO_API_LATEST                        EOS_LOBBYDETAILS_INFO_API_003
