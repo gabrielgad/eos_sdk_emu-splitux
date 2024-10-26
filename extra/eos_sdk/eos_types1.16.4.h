@@ -56,7 +56,7 @@ EOS_STRUCT(EOS_Platform_RTCOptions002, (
 #define EOS_LOCALECODE_MAX_LENGTH 9
 #define EOS_LOCALECODE_MAX_BUFFER_LEN (EOS_LOCALECODE_MAX_LENGTH + 1)
 
-#define EOS_PLATFORM_OPTIONS_API_0014 14
+#define EOS_PLATFORM_OPTIONS_API_014 14
 
 /** Platform Creation Flags used in EOS_Platform_Create */
 
@@ -90,7 +90,7 @@ EOS_STRUCT(EOS_Platform_RTCOptions002, (
 #define EOS_PLATFORM_OPTIONS_DEPLOYMENTID_MAX_LENGTH 64
 
 /** Platform options for EOS_Platform_Create. */
-EOS_STRUCT(EOS_Platform_Options0014, (
+EOS_STRUCT(EOS_Platform_Options014, (
 	/** API Version: Set this to EOS_PLATFORM_OPTIONS_API_LATEST. */
 	int32_t ApiVersion;
 	/** A reserved field that should always be nulled. */

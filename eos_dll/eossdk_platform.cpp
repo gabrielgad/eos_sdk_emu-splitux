@@ -72,18 +72,21 @@ void EOSSDK_Platform::Init(const EOS_Platform_Options* Options)
             _api_version = Options->ApiVersion;
             switch (Options->ApiVersion)
             {
-                case EOS_PLATFORM_OPTIONS_API_0014: 
+                case EOS_PLATFORM_OPTIONS_API_014: 
                 {
-                    auto pf = reinterpret_cast<const EOS_Platform_Options0014*>(Options);
-                    APP_LOG(Log::LogLevel::DEBUG, "RTCOptions = '%s'", pf->RTCOptions->ApiVersion);
+                    auto pf = reinterpret_cast<const EOS_Platform_Options014*>(Options);
                     APP_LOG(Log::LogLevel::DEBUG, "IntegratedPlatformOptionsContainerHandle = '%s'", pf->IntegratedPlatformOptionsContainerHandle);
                     APP_LOG(Log::LogLevel::DEBUG, "OverrideLocaleCode = '%d'", *pf->TaskNetworkTimeoutSeconds);
                     APP_LOG(Log::LogLevel::DEBUG, "DeploymentId = '%s'", _deployment_id.c_str());
                 }
-                case EOS_PLATFORM_OPTIONS_API_0013:
-                case EOS_PLATFORM_OPTIONS_API_0012:
-                case EOS_PLATFORM_OPTIONS_API_0011:
-                case EOS_PLATFORM_OPTIONS_API_0010:
+                case EOS_PLATFORM_OPTIONS_API_013:
+                case EOS_PLATFORM_OPTIONS_API_012:
+                case EOS_PLATFORM_OPTIONS_API_011:
+                {
+                    auto pf = reinterpret_cast<const EOS_Platform_Options011*>(Options);
+                    if (pf->RTCOptions != NULL) APP_LOG(Log::LogLevel::DEBUG, "RTCOptions = '%s'", pf->RTCOptions->ApiVersion);
+                }
+                case EOS_PLATFORM_OPTIONS_API_010:
                 case EOS_PLATFORM_OPTIONS_API_009:
                 case EOS_PLATFORM_OPTIONS_API_008:
                 case EOS_PLATFORM_OPTIONS_API_007:
