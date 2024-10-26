@@ -375,6 +375,9 @@ void EOSSDK_Lobby::CreateLobby(const EOS_Lobby_CreateLobbyOptions* Options, void
         case EOS_LOBBY_CREATELOBBY_API_009:
         {
             const EOS_Lobby_CreateLobbyOptions009* opts = reinterpret_cast<const EOS_Lobby_CreateLobbyOptions009*>(Options);
+            if (opts->LobbyId != NULL) {
+                lobby_id = std::string(opts->LobbyId);
+            }
             auto& infos = _lobbies[lobby_id];
             infos.infos.set_allowedplatformids(opts->AllowedPlatformIds, opts->AllowedPlatformIdsCount);
             infos.infos.set_allowedplatformidscount(opts->AllowedPlatformIdsCount);
@@ -389,16 +392,23 @@ void EOSSDK_Lobby::CreateLobby(const EOS_Lobby_CreateLobbyOptions* Options, void
                 lobby_id = std::string(opts->LobbyId);
             }
             auto& infos = _lobbies[lobby_id];
-            std::string bucket_id(std::move((opts->BucketId)));
-            infos.infos.set_bucket_id(bucket_id);
-            infos.infos.set_ballowhostmigration(!opts->bDisableHostMigration);
             infos.infos.set_brtcroomenabled(opts->bEnableRTCRoom);
             infos.infos.set_bpresenceenabled(opts->bPresenceEnabled);
-
         }
         //case EOS_LOBBY_CREATELOBBY_API_006:
         case EOS_LOBBY_CREATELOBBY_API_005:
+        {
+            const EOS_Lobby_CreateLobbyOptions005* opts = reinterpret_cast<const EOS_Lobby_CreateLobbyOptions005*>(Options);
+            auto& infos = _lobbies[lobby_id];
+            infos.infos.set_ballowhostmigration(!opts->bDisableHostMigration);
+        }
         case EOS_LOBBY_CREATELOBBY_API_004:
+        {
+            const EOS_Lobby_CreateLobbyOptions004* opts = reinterpret_cast<const EOS_Lobby_CreateLobbyOptions004*>(Options);
+            auto& infos = _lobbies[lobby_id];
+            std::string bucket_id(std::move((opts->BucketId)));
+            infos.infos.set_bucket_id(bucket_id);
+        }
         //case EOS_LOBBY_CREATELOBBY_API_003:
         case EOS_LOBBY_CREATELOBBY_API_002:
         {
