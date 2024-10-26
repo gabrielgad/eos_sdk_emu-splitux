@@ -463,7 +463,7 @@ void Network::process_waiting_out_clients()
                 //    message_size = buff.length();
                 //#else
                     message = it->second.buffer.data();
-                    message_size = it->second.buffer.size();
+                    message_size = it->second.next_packet_size;
                 //#endif
                     
                     if (msg.ParseFromArray(message, message_size) &&
@@ -526,7 +526,7 @@ void Network::process_waiting_in_client()
                     message_size = buff.length();
                 #else
                     message = it->buffer.data();
-                    message_size = it->buffer.size();
+                    message_size = it->next_packet_size;
                 #endif
                     
                     if (msg.ParseFromArray(message, message_size) &&
@@ -724,12 +724,12 @@ void Network::process_tcp_data(tcp_buffer_t& tcp_buffer)
                 message_size = buff.length();
             #else
                 message = tcp_buffer.buffer.data();
-                message_size = tcp_buffer.buffer.size();
+                message_size = tcp_buffer.next_packet_size;
             #endif
 
                 if (msg.ParseFromArray(message, message_size))
                 {
-                    //APP_LOG(Log::LogLevel::DEBUG, "Received TCP message from %s type %d", tcp_buffer.socket.get_addr().to_string(true).c_str(), msg.messages_case());
+                    APP_LOG(Log::LogLevel::DEBUG, "Received TCP message from %s type %d", tcp_buffer.socket.get_addr().to_string(true).c_str(), msg.messages_case());
                     process_network_message(msg);
                 }
                 tcp_buffer.buffer.erase(tcp_buffer.buffer.begin(), tcp_buffer.buffer.begin() + tcp_buffer.next_packet_size);
@@ -1144,7 +1144,7 @@ bool Network::TCPSendTo(Network_Message_pb& msg)
     try
     {
         it->second->send(buffer.data(), buffer.length());
-        //APP_LOG(Log::LogLevel::TRACE, "Sent message to %s", it->second.to_string().c_str());
+        //APP_LOG(Log::LogLevel::TRACE, "Sent message to %s", it->second->get_addr().to_string());
     }
     catch (socket_exception & e)
     {
