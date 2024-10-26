@@ -52,12 +52,30 @@ EOSSDK_P2P::~EOSSDK_P2P()
 
 void EOSSDK_P2P::set_p2p_state_connected(EOS_ProductUserId remote_id, p2p_state_t& state)
 {
+    p2p_state_t::status_e oldStatus = state.status;
     state.status = p2p_state_t::status_e::connected;
     for (auto& out_msgs : state.p2p_out_messages)
     {// Send all previously stored messages
         send_p2p_data(remote_id->to_string(), &out_msgs);
     }
     state.p2p_out_messages.clear();
+
+
+    std::vector<pFrameResult_t> notifs = std::move(GetCB_Manager().get_notifications(this, EOS_P2P_OnPeerConnectionEstablishedInfo::k_iCallback));
+    for (auto& notif : notifs)
+    {
+        EOS_P2P_OnPeerConnectionEstablishedInfo& opcei = notif->GetCallback<EOS_P2P_OnPeerConnectionEstablishedInfo>();
+        if (oldStatus == p2p_state_t::status_e::connection_loss) {
+            opcei.ConnectionType = EOS_EConnectionEstablishedType::EOS_CET_Reconnection;
+        }
+        else opcei.ConnectionType = EOS_EConnectionEstablishedType::EOS_CET_NewConnection;
+        opcei.RemoteUserId = remote_id;
+        EOS_P2P_SocketId * socketId = new EOS_P2P_SocketId;
+        socketId->ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
+        strncpy(const_cast<char*>(socketId->SocketName), state.socket_name.c_str(), sizeof(EOS_P2P_SocketId::SocketName));
+        opcei.SocketId = socketId;
+        notif->GetFunc()(notif->GetFuncParam());
+    }
 }
 
 /**
@@ -836,6 +854,15 @@ bool EOSSDK_P2P::on_peer_disconnect(Network_Message_pb const& msg, Network_Peer_
     if (it != _p2p_connections.end())
     {
         it->second.connection_loss_start = std::chrono::steady_clock::now();
+    }
+
+    std::vector<pFrameResult_t> notifs = std::move(GetCB_Manager().get_notifications(this, EOS_P2P_OnPeerConnectionInterruptedInfo::k_iCallback));
+    for (auto& notif : notifs)
+    {
+        EOS_P2P_OnPeerConnectionInterruptedInfo& opcii = notif->GetCallback<EOS_P2P_OnPeerConnectionInterruptedInfo>();
+        opcii.LocalUserId = Settings::Inst().productuserid;
+        opcii.RemoteUserId = peer_id;
+        notif->GetFunc()(notif->GetFuncParam());
     }
 
     return true;
