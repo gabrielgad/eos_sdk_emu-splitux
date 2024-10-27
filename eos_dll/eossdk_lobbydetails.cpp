@@ -48,7 +48,7 @@ EOS_ProductUserId EOSSDK_LobbyDetails::GetLobbyOwner(const EOS_LobbyDetails_GetL
     if (Options == nullptr)
         return GetInvalidProductUserId();
 
-    return GetProductUserId(_infos.owner_id());
+    return GetProductUserId(_state.infos.owner_id());
 }
 
 /**
@@ -80,21 +80,21 @@ EOS_EResult EOSSDK_LobbyDetails::CopyInfo(const EOS_LobbyDetails_CopyInfoOptions
 
     pLobbyDetailsInfos->ApiVersion = EOS_LOBBYDETAILS_INFO_API_LATEST;
     {
-        size_t len = _infos.lobby_id().length() + 1;
+        size_t len = _state.infos.lobby_id().length() + 1;
         char* str = new char[len];
-        strncpy(str, _infos.lobby_id().c_str(), len);
+        strncpy(str, _state.infos.lobby_id().c_str(), len);
         pLobbyDetailsInfos->LobbyId = str;
 
-        len = _infos.bucket_id().length() + 1;
+        len = _state.infos.bucket_id().length() + 1;
         str = new char[len];
-        strncpy(str, _infos.bucket_id().c_str(), len);
+        strncpy(str, _state.infos.bucket_id().c_str(), len);
         pLobbyDetailsInfos->BucketId = str;
     }
     
-    pLobbyDetailsInfos->LobbyOwnerUserId = GetProductUserId(_infos.owner_id());
-    pLobbyDetailsInfos->PermissionLevel = (EOS_ELobbyPermissionLevel)_infos.permission_level();
-    pLobbyDetailsInfos->AvailableSlots = _infos.max_lobby_member() - _infos.members_size();
-    pLobbyDetailsInfos->MaxMembers = _infos.max_lobby_member();
+    pLobbyDetailsInfos->LobbyOwnerUserId = GetProductUserId(_state.infos.owner_id());
+    pLobbyDetailsInfos->PermissionLevel = (EOS_ELobbyPermissionLevel)_state.infos.permission_level();
+    pLobbyDetailsInfos->AvailableSlots = _state.infos.max_lobby_member() - _state.infos.members_size();
+    pLobbyDetailsInfos->MaxMembers = _state.infos.max_lobby_member();
     pLobbyDetailsInfos->bAllowInvites = EOS_TRUE;
     pLobbyDetailsInfos->bAllowHostMigration = EOS_TRUE;
     pLobbyDetailsInfos->bRTCRoomEnabled = EOS_TRUE;
@@ -122,7 +122,7 @@ uint32_t EOSSDK_LobbyDetails::GetAttributeCount(const EOS_LobbyDetails_GetAttrib
     if (Options == nullptr)
         return 0;
 
-    return _infos.attributes_size();
+    return _state.infos.attributes_size();
 }
 
 /**
@@ -144,13 +144,13 @@ EOS_EResult EOSSDK_LobbyDetails::CopyAttributeByIndex(const EOS_LobbyDetails_Cop
 {
     TRACE_FUNC();
 
-    if (Options == nullptr || Options->AttrIndex >= _infos.attributes_size() || OutAttribute == nullptr)
+    if (Options == nullptr || Options->AttrIndex >= _state.infos.attributes_size() || OutAttribute == nullptr)
     {
         set_nullptr(OutAttribute);
         return EOS_EResult::EOS_InvalidParameters;
     }
 
-    auto attr_it = _infos.attributes().begin();
+    auto attr_it = _state.infos.attributes().begin();
     std::advance(attr_it, Options->AttrIndex);
 
     EOS_Lobby_Attribute* pAttribute = new EOS_Lobby_Attribute;
@@ -230,8 +230,8 @@ EOS_EResult EOSSDK_LobbyDetails::CopyAttributeByKey(const EOS_LobbyDetails_CopyA
         return EOS_EResult::EOS_InvalidParameters;
     }
 
-    auto attr_it = _infos.attributes().find(Options->AttrKey);
-    if (attr_it == _infos.attributes().end())
+    auto attr_it = _state.infos.attributes().find(Options->AttrKey);
+    if (attr_it == _state.infos.attributes().end())
     {
         *OutAttribute = nullptr;
         return EOS_EResult::EOS_InvalidParameters;
@@ -303,7 +303,7 @@ uint32_t EOSSDK_LobbyDetails::GetMemberCount(const EOS_LobbyDetails_GetMemberCou
     if (Options == nullptr)
         return 0;
 
-    return _infos.members_size();
+    return _state.infos.members_size();
 }
 
 /**
@@ -320,10 +320,10 @@ EOS_ProductUserId EOSSDK_LobbyDetails::GetMemberByIndex(const EOS_LobbyDetails_G
 {
     TRACE_FUNC();
 
-    if (Options == nullptr || Options->MemberIndex >= _infos.members_size())
+    if (Options == nullptr || Options->MemberIndex >= _state.infos.members_size())
         return GetInvalidProductUserId();
 
-    auto member_it = _infos.members().begin();
+    auto member_it = _state.infos.members().begin();
     std::advance(member_it, Options->MemberIndex);
 
     return GetProductUserId(member_it->first);
@@ -346,8 +346,8 @@ uint32_t EOSSDK_LobbyDetails::GetMemberAttributeCount(const EOS_LobbyDetails_Get
     if (Options == nullptr || Options->TargetUserId == nullptr)
         return 0;
 
-    auto members_it = _infos.members().find(Options->TargetUserId->to_string());
-    if (members_it == _infos.members().end())
+    auto members_it = _state.infos.members().find(Options->TargetUserId->to_string());
+    if (members_it == _state.infos.members().end())
         return 0;
 
     return members_it->second.attributes_size();
@@ -378,8 +378,8 @@ EOS_EResult EOSSDK_LobbyDetails::CopyMemberAttributeByIndex(const EOS_LobbyDetai
         return EOS_EResult::EOS_InvalidParameters;
     }
 
-    auto members_it = _infos.members().find(Options->TargetUserId->to_string());
-    if (members_it == _infos.members().end())
+    auto members_it = _state.infos.members().find(Options->TargetUserId->to_string());
+    if (members_it == _state.infos.members().end())
     {
         *OutAttribute = nullptr;
         return EOS_EResult::EOS_InvalidParameters;
@@ -465,8 +465,8 @@ EOS_EResult EOSSDK_LobbyDetails::CopyMemberAttributeByKey(const EOS_LobbyDetails
         return EOS_EResult::EOS_InvalidParameters;
     }
 
-    auto members_it = _infos.members().find(Options->TargetUserId->to_string());
-    if (members_it == _infos.members().end())
+    auto members_it = _state.infos.members().find(Options->TargetUserId->to_string());
+    if (members_it == _state.infos.members().end())
     {
         *OutAttribute = nullptr;
         return EOS_EResult::EOS_InvalidParameters;

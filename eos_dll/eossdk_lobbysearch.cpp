@@ -277,7 +277,7 @@ EOS_EResult EOSSDK_LobbySearch::CopySearchResultByIndex(const EOS_LobbySearch_Co
 
     auto it = _results.begin();
     std::advance(it, Options->LobbyIndex);
-    pLobbyDetails->_infos = *it;
+    pLobbyDetails->_state.infos = *it;
 
     *OutLobbyDetailsHandle = reinterpret_cast<EOS_HLobbyDetails>(pLobbyDetails);
     return EOS_EResult::EOS_Success;

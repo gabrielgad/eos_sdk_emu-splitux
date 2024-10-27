@@ -53,7 +53,7 @@ lobby_state_t* EOSSDK_Lobby::get_lobby_by_id(std::string const& lobby_id)
     if (it == _lobbies.end())
         return nullptr;
 
-    return &(it->second);
+    return &(it->second._state);
 }
 
 template<typename T>
@@ -100,7 +100,7 @@ std::vector<lobby_state_t*> EOSSDK_Lobby::get_lobbies_from_attributes(google::pr
                         {// Wrong parameter type should never happen, it's already tested in the search.
                             case Session_Attr_Value::ValueCase::kI:
                             {
-                                int64_t lobby_current_members = lobby.second.infos.members_size();
+                                int64_t lobby_current_members = lobby.second._state.infos.members_size();
                                 int64_t min_current_members = it->second.i();
                                 found = compare_attribute_values(lobby_current_members, EOS_EOnlineComparisonOp::EOS_CO_GREATERTHANOREQUAL, min_current_members, param.first);
                             }
@@ -125,7 +125,7 @@ std::vector<lobby_state_t*> EOSSDK_Lobby::get_lobbies_from_attributes(google::pr
                         {// Wrong parameter type should never happen, it's already tested in the search.
                             case Session_Attr_Value::ValueCase::kI:
                             {
-                                int64_t lobby_slots_available = static_cast<int64_t>(lobby.second.infos.max_lobby_member()) - lobby.second.infos.members_size();
+                                int64_t lobby_slots_available = static_cast<int64_t>(lobby.second._state.infos.max_lobby_member()) - lobby.second._state.infos.members_size();
                                 int64_t min_slots_available = it->second.i();
                                 found = compare_attribute_values(lobby_slots_available, EOS_EOnlineComparisonOp::EOS_CO_GREATERTHANOREQUAL, min_slots_available, param.first);
                             }
@@ -142,8 +142,8 @@ std::vector<lobby_state_t*> EOSSDK_Lobby::get_lobbies_from_attributes(google::pr
                 break;
 
                 default:
-                    auto it = lobby.second.infos.attributes().find(param.first);
-                    if (it == lobby.second.infos.attributes().end())
+                    auto it = lobby.second._state.infos.attributes().find(param.first);
+                    if (it == lobby.second._state.infos.attributes().end())
                     {
                         found = false;
                     }
@@ -196,14 +196,14 @@ std::vector<lobby_state_t*> EOSSDK_Lobby::get_lobbies_from_attributes(google::pr
             }
             if (found == false)
             {
-                APP_LOG(Log::LogLevel::DEBUG, "This lobby didn't match: %s", lobby.second.infos.lobby_id().c_str());
+                APP_LOG(Log::LogLevel::DEBUG, "This lobby didn't match: %s", lobby.second._state.infos.lobby_id().c_str());
                 break;
             }
         }
 
         if (found)
         {
-            res.emplace_back(&lobby.second);
+            res.emplace_back(&lobby.second._state);
         }
     }
 
@@ -379,10 +379,10 @@ void EOSSDK_Lobby::CreateLobby(const EOS_Lobby_CreateLobbyOptions* Options, void
                 lobby_id = std::string(opts->LobbyId);
             }
             auto& infos = _lobbies[lobby_id];
-            infos.infos.set_allowedplatformids(opts->AllowedPlatformIds, opts->AllowedPlatformIdsCount);
-            infos.infos.set_allowedplatformidscount(opts->AllowedPlatformIdsCount);
-            infos.infos.set_ballowjoinbyid(opts->bEnableJoinById);
-            infos.infos.set_brejoinafterkickrequiresinvite(opts->bRejoinAfterKickRequiresInvite);
+            infos._state.infos.set_allowedplatformids(opts->AllowedPlatformIds, opts->AllowedPlatformIdsCount);
+            infos._state.infos.set_allowedplatformidscount(opts->AllowedPlatformIdsCount);
+            infos._state.infos.set_ballowjoinbyid(opts->bEnableJoinById);
+            infos._state.infos.set_brejoinafterkickrequiresinvite(opts->bRejoinAfterKickRequiresInvite);
         }
         case EOS_LOBBY_CREATELOBBY_API_008:
         case EOS_LOBBY_CREATELOBBY_API_007:
@@ -392,22 +392,22 @@ void EOSSDK_Lobby::CreateLobby(const EOS_Lobby_CreateLobbyOptions* Options, void
                 lobby_id = std::string(opts->LobbyId);
             }
             auto& infos = _lobbies[lobby_id];
-            infos.infos.set_brtcroomenabled(opts->bEnableRTCRoom);
-            infos.infos.set_bpresenceenabled(opts->bPresenceEnabled);
+            infos._state.infos.set_brtcroomenabled(opts->bEnableRTCRoom);
+            infos._state.infos.set_bpresenceenabled(opts->bPresenceEnabled);
         }
         //case EOS_LOBBY_CREATELOBBY_API_006:
         case EOS_LOBBY_CREATELOBBY_API_005:
         {
             const EOS_Lobby_CreateLobbyOptions005* opts = reinterpret_cast<const EOS_Lobby_CreateLobbyOptions005*>(Options);
             auto& infos = _lobbies[lobby_id];
-            infos.infos.set_ballowhostmigration(!opts->bDisableHostMigration);
+            infos._state.infos.set_ballowhostmigration(!opts->bDisableHostMigration);
         }
         case EOS_LOBBY_CREATELOBBY_API_004:
         {
             const EOS_Lobby_CreateLobbyOptions004* opts = reinterpret_cast<const EOS_Lobby_CreateLobbyOptions004*>(Options);
             auto& infos = _lobbies[lobby_id];
             std::string bucket_id(std::move((opts->BucketId)));
-            infos.infos.set_bucket_id(bucket_id);
+            infos._state.infos.set_bucket_id(bucket_id);
         }
         //case EOS_LOBBY_CREATELOBBY_API_003:
         case EOS_LOBBY_CREATELOBBY_API_002:
@@ -418,12 +418,12 @@ void EOSSDK_Lobby::CreateLobby(const EOS_Lobby_CreateLobbyOptions* Options, void
             const_cast<char*>(clci.LobbyId)[64] = 0;
 
             auto& infos = _lobbies[lobby_id];
-            infos.infos.set_lobby_id(lobby_id);
-            infos.infos.set_owner_id(GetEOS_Connect().get_myself()->first->to_string());
-            infos.infos.set_max_lobby_member(opts->MaxLobbyMembers);
-            infos.infos.set_permission_level(utils::GetEnumValue(opts->PermissionLevel));
-            (*infos.infos.mutable_members())[GetEOS_Connect().get_myself()->first->to_string()];
-            infos.state = lobby_state_t::created;
+            infos._state.infos.set_lobby_id(lobby_id);
+            infos._state.infos.set_owner_id(GetEOS_Connect().get_myself()->first->to_string());
+            infos._state.infos.set_max_lobby_member(opts->MaxLobbyMembers);
+            infos._state.infos.set_permission_level(utils::GetEnumValue(opts->PermissionLevel));
+            (*infos._state.infos.mutable_members())[GetEOS_Connect().get_myself()->first->to_string()];
+            infos._state.state = lobby_state_t::created;
 
             clci.ResultCode = EOS_EResult::EOS_Success;
         }
@@ -529,9 +529,9 @@ void EOSSDK_Lobby::JoinLobby(const EOS_Lobby_JoinLobbyOptions* Options, void* Cl
         }
         else
         {
-            size_t len = pLobbyDetails->_infos.lobby_id().length() + 1;
+            size_t len = pLobbyDetails->_state.infos.lobby_id().length() + 1;
             str = new char[len];
-            strncpy(str, pLobbyDetails->_infos.lobby_id().c_str(), len);
+            strncpy(str, pLobbyDetails->_state.infos.lobby_id().c_str(), len);
         }
         jlci.LobbyId = str;
     }
@@ -549,11 +549,11 @@ void EOSSDK_Lobby::JoinLobby(const EOS_Lobby_JoinLobbyOptions* Options, void* Cl
     else
     {
         Lobby_Join_Request_pb* request = new Lobby_Join_Request_pb;
-        request->set_lobby_id(pLobbyDetails->_infos.lobby_id());
+        request->set_lobby_id(pLobbyDetails->_state.infos.lobby_id());
         _joins_requests[join_id].cb = res;
         request->set_join_id(join_id++);
 
-        send_lobby_join_request(pLobbyDetails->_infos.owner_id(), request);
+        send_lobby_join_request(pLobbyDetails->_state.infos.owner_id(), request);
         jlci.ResultCode = EOS_EResult::EOS_TimedOut;
     }
 
@@ -610,7 +610,7 @@ void EOSSDK_Lobby::LeaveLobby(const EOS_Lobby_LeaveLobbyOptions* Options, void* 
         if (it != _lobbies.end())
         {
             // TODO: If we're the owner, destroy the lobby ?
-            send_lobby_member_leave(GetEOS_Connect().get_myself()->first->to_string(), &it->second, EOS_ELobbyMemberStatus::EOS_LMS_LEFT);
+            send_lobby_member_leave(GetEOS_Connect().get_myself()->first->to_string(), &it->second._state, EOS_ELobbyMemberStatus::EOS_LMS_LEFT);
             llci.ResultCode = EOS_EResult::EOS_Success;
             _lobbies.erase(it);
         }
@@ -655,7 +655,7 @@ EOS_EResult EOSSDK_Lobby::UpdateLobbyModification(const EOS_Lobby_UpdateLobbyMod
     }
 
     EOSSDK_LobbyModification* pLobbyModif = new EOSSDK_LobbyModification;
-    pLobbyModif->_infos = lobby_it->second.infos;
+    pLobbyModif->_infos = lobby_it->second._state.infos;
 
     *OutLobbyModificationHandle = reinterpret_cast<EOS_HLobbyModification>(pLobbyModif);
 
@@ -1433,8 +1433,8 @@ EOS_EResult EOSSDK_Lobby::CopyLobbyDetailsHandleByInviteId(const EOS_Lobby_CopyL
         return EOS_EResult::EOS_NotFound;
     }
 
-    EOSSDK_LobbyDetails* pLobbyDetails = new EOSSDK_LobbyDetails;
-    pLobbyDetails->_infos = it->second.infos;
+    EOSSDK_LobbyDetails* pLobbyDetails = new EOSSDK_LobbyDetails; //TODO: use address of existing lobbydetails
+    pLobbyDetails->_state.infos = it->second.infos;
     *OutLobbyDetailsHandle = reinterpret_cast<EOS_HLobbyDetails>(pLobbyDetails);
 
     return EOS_EResult::EOS_Success;
@@ -1498,9 +1498,7 @@ EOS_EResult EOSSDK_Lobby::CopyLobbyDetailsHandle(const EOS_Lobby_CopyLobbyDetail
         return EOS_EResult::EOS_NotFound;
     }
     
-    EOSSDK_LobbyDetails* pLobbyDetails = new EOSSDK_LobbyDetails;
-
-    pLobbyDetails->_infos = it->second.infos;
+    EOSSDK_LobbyDetails* pLobbyDetails = &it->second;
 
     *OutLobbyDetailsHandle = reinterpret_cast<EOS_HLobbyDetails>(pLobbyDetails);
 
@@ -1734,9 +1732,9 @@ bool EOSSDK_Lobby::on_peer_disconnect(Network_Message_pb const& msg, Network_Pee
 
     for (auto& lobby : _lobbies)
     {
-        if (i_am_owner(&lobby.second))
+        if (i_am_owner(&lobby.second._state))
         {
-            if (remove_member_from_lobby(msg.source_id(), &lobby.second))
+            if (remove_member_from_lobby(msg.source_id(), &lobby.second._state))
             {
                 std::string const& user_id = Settings::Inst().productuserid->to_string();
 
@@ -1744,7 +1742,7 @@ bool EOSSDK_Lobby::on_peer_disconnect(Network_Message_pb const& msg, Network_Pee
                 Lobby_Message_pb* lobby_pb = new Lobby_Message_pb;
                 Lobby_Member_Leave_pb* member_leave = new Lobby_Member_Leave_pb;
 
-                member_leave->set_lobby_id(lobby.second.infos.lobby_id());
+                member_leave->set_lobby_id(lobby.second._state.infos.lobby_id());
                 member_leave->set_member_id(msg.source_id());
                 member_leave->set_reason(utils::GetEnumValue(EOS_ELobbyMemberStatus::EOS_LMS_DISCONNECTED));
 
@@ -1753,9 +1751,9 @@ bool EOSSDK_Lobby::on_peer_disconnect(Network_Message_pb const& msg, Network_Pee
 
                 msg_resp.set_source_id(user_id);
 
-                send_to_all_members(msg_resp, &lobby.second);
+                send_to_all_members(msg_resp, &lobby.second._state);
 
-                notify_lobby_member_status_update(msg.source_id(), EOS_ELobbyMemberStatus::EOS_LMS_DISCONNECTED, &lobby.second);
+                notify_lobby_member_status_update(msg.source_id(), EOS_ELobbyMemberStatus::EOS_LMS_DISCONNECTED, &lobby.second._state);
             }
         }
     }
@@ -1833,9 +1831,9 @@ bool EOSSDK_Lobby::on_lobbies_search(Network_Message_pb const& msg, Lobbies_Sear
         {
             for (auto& lobby : _lobbies)
             {
-                if (i_am_owner(&lobby.second))
+                if (i_am_owner(&lobby.second._state))
                 {
-                    *resp->mutable_lobbies()->Add() = lobby.second.infos;
+                    *resp->mutable_lobbies()->Add() = lobby.second._state.infos;
                 }
             }
         }
@@ -1904,9 +1902,10 @@ bool EOSSDK_Lobby::on_lobby_join_response(Network_Message_pb const& msg, Lobby_J
         {
             jlci.ResultCode = EOS_EResult::EOS_Success;
             auto& lobby = _lobbies[resp.infos().lobby_id()];
-            lobby.infos = resp.infos();
-            lobby.state = lobby_state_t::joined;
-            add_member_to_lobby(msg.dest_id(), &lobby);
+            lobby._state.state = lobby_state_t::joined;
+            lobby._state.infos = resp.infos();
+
+            add_member_to_lobby(msg.dest_id(), &lobby._state);
         }
         else
         {

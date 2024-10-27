@@ -99,12 +99,22 @@ namespace sdk
         void        Release();
     };
 
+    struct lobby_state_t
+    {
+        enum state_e
+        {
+            created,
+            joined,
+        } state;
+        Lobby_Infos_pb infos;
+    };
+
     class EOSSDK_LobbyDetails
     {
         friend class sdk::EOSSDK_Lobby;
         friend class sdk::EOSSDK_LobbySearch;
 
-        Lobby_Infos_pb _infos;
+        lobby_state_t _state;
 
     public:
         EOSSDK_LobbyDetails();
@@ -121,16 +131,6 @@ namespace sdk
         EOS_EResult       CopyMemberAttributeByIndex(const EOS_LobbyDetails_CopyMemberAttributeByIndexOptions* Options, EOS_Lobby_Attribute** OutAttribute);
         EOS_EResult       CopyMemberAttributeByKey(const EOS_LobbyDetails_CopyMemberAttributeByKeyOptions* Options, EOS_Lobby_Attribute** OutAttribute);
         void              Release();
-    };
-
-    struct lobby_state_t
-    {
-        enum state_e
-        {
-            created,
-            joined,
-        } state;
-        Lobby_Infos_pb infos;
     };
 
     struct lobby_invite_t
@@ -151,7 +151,7 @@ namespace sdk
         static int32_t join_id;
         constexpr static auto join_timeout = std::chrono::milliseconds(5000);
 
-        std::unordered_map<std::string, lobby_state_t>  _lobbies;
+        std::unordered_map<std::string, EOSSDK_LobbyDetails>  _lobbies;
         std::list<EOSSDK_LobbySearch*>                  _lobbies_searchs;
         nlohmann::fifo_map<std::string, lobby_invite_t> _lobby_invites;
         std::unordered_map<int32_t, lobby_join_t>       _joins_requests;
