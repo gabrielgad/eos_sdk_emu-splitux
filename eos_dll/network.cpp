@@ -654,7 +654,7 @@ void Network::process_udp()
                     }
                     else
                     {
-                        APP_LOG(Log::LogLevel::DEBUG, "Received UDP message from %s type %d", addr.to_string(true).c_str(), msg.messages_case());
+                        //APP_LOG(Log::LogLevel::DEBUG, "Received UDP message from %s type %d", addr.to_string(true).c_str(), msg.messages_case());
                         process_network_message(msg);
                     }
                 }
@@ -729,7 +729,7 @@ void Network::process_tcp_data(tcp_buffer_t& tcp_buffer)
 
                 if (msg.ParseFromArray(message, message_size))
                 {
-                    APP_LOG(Log::LogLevel::DEBUG, "Received TCP message from %s type %d", tcp_buffer.socket.get_addr().to_string(true).c_str(), msg.messages_case());
+                    //APP_LOG(Log::LogLevel::DEBUG, "Received TCP message from %s type %d", tcp_buffer.socket.get_addr().to_string(true).c_str(), msg.messages_case());
                     process_network_message(msg);
                 }
                 tcp_buffer.buffer.erase(tcp_buffer.buffer.begin(), tcp_buffer.buffer.begin() + tcp_buffer.next_packet_size);
@@ -1049,7 +1049,7 @@ bool Network::UDPSendTo(Network_Message_pb& msg)
     try
     {
         _udp_socket.sendto(it->second, buffer.data(), buffer.length());
-        APP_LOG(Log::LogLevel::DEBUG, "Sent message to peer_id: %s, addr: %s", msg.dest_id().c_str(), it->second.to_string().c_str());
+        //APP_LOG(Log::LogLevel::DEBUG, "Sent message to peer_id: %s, addr: %s", msg.dest_id().c_str(), it->second.to_string().c_str());
     }
     catch (socket_exception & e)
     {

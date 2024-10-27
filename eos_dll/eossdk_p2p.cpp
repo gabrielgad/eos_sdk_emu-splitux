@@ -96,7 +96,7 @@ void EOSSDK_P2P::set_p2p_state_connected(EOS_ProductUserId remote_id, p2p_state_
  */
 EOS_EResult EOSSDK_P2P::SendPacket(const EOS_P2P_SendPacketOptions* Options)
 {
-    TRACE_FUNC();
+    //TRACE_FUNC();
     GLOBAL_LOCK();
     
     if (Options == nullptr || Options->RemoteUserId == nullptr || Options->Data == nullptr)
@@ -110,12 +110,10 @@ EOS_EResult EOSSDK_P2P::SendPacket(const EOS_P2P_SendPacketOptions* Options)
         case EOS_P2P_SENDPACKET_API_003:
         {
             const EOS_P2P_SendPacketOptions003* opts = reinterpret_cast<const EOS_P2P_SendPacketOptions003*>(Options);
-            APP_LOG(Log::LogLevel::INFO, "Lol %d", opts->bAllowDelayedDelivery);
         }
         case EOS_P2P_SENDPACKET_API_002:
         {
             const EOS_P2P_SendPacketOptions002* opts = reinterpret_cast<const EOS_P2P_SendPacketOptions002*>(Options);
-            
         }
         case EOS_P2P_SENDPACKET_API_001:
         {
@@ -761,7 +759,7 @@ bool EOSSDK_P2P::send_p2p_connection_response(Network::peer_t const& peerid, P2P
 
 bool EOSSDK_P2P::send_p2p_data(Network::peer_t const& peerid, P2P_Data_Message_pb* data) const
 {
-    TRACE_FUNC();
+    //TRACE_FUNC();
     std::string const& user_id = Settings::Inst().productuserid->to_string();
 
     Network_Message_pb msg;
@@ -783,7 +781,7 @@ bool EOSSDK_P2P::send_p2p_data(Network::peer_t const& peerid, P2P_Data_Message_p
 
 bool EOSSDK_P2P::send_p2p_data_ack(Network::peer_t const& peerid, P2P_Data_Acknowledge_pb* ack) const
 {
-    TRACE_FUNC();
+    //TRACE_FUNC();
     std::string const& user_id = Settings::Inst().productuserid->to_string();
 
     Network_Message_pb msg;
@@ -802,7 +800,7 @@ bool EOSSDK_P2P::send_p2p_data_ack(Network::peer_t const& peerid, P2P_Data_Ackno
 
 bool EOSSDK_P2P::send_p2p_connetion_close(Network::peer_t const& peerid, P2P_Connection_Close_pb* close) const
 {
-    TRACE_FUNC();
+    //TRACE_FUNC();
     std::string const& user_id = Settings::Inst().productuserid->to_string();
 
     Network_Message_pb msg;
@@ -928,7 +926,7 @@ bool EOSSDK_P2P::on_p2p_connection_response(Network_Message_pb const& msg, P2P_C
 
 bool EOSSDK_P2P::on_p2p_data(Network_Message_pb const& msg, P2P_Data_Message_pb const& data)
 {
-    TRACE_FUNC();
+    //TRACE_FUNC();
     std::lock_guard<std::recursive_mutex> lk(local_mutex);
 
     EOS_ProductUserId remote_id = GetProductUserId(msg.source_id());
@@ -961,7 +959,7 @@ bool EOSSDK_P2P::on_p2p_data(Network_Message_pb const& msg, P2P_Data_Message_pb 
 
 bool EOSSDK_P2P::on_p2p_data_ack(Network_Message_pb const& msg, P2P_Data_Acknowledge_pb const& ack)
 {
-    TRACE_FUNC();
+    //TRACE_FUNC();
     GLOBAL_LOCK();
 
     return true;
