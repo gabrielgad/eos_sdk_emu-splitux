@@ -50,6 +50,9 @@ EOSSDK_P2P::~EOSSDK_P2P()
     GetCB_Manager().remove_all_notifications(this);
 }
 
+
+EOS_P2P_OnPeerConnectionEstablishedInfo* mCachedOpcei = NULL;
+
 void EOSSDK_P2P::set_p2p_state_connected(EOS_ProductUserId remote_id, p2p_state_t& state)
 {
     p2p_state_t::status_e oldStatus = state.status;
@@ -62,6 +65,19 @@ void EOSSDK_P2P::set_p2p_state_connected(EOS_ProductUserId remote_id, p2p_state_
 
 
     std::vector<pFrameResult_t> notifs = std::move(GetCB_Manager().get_notifications(this, EOS_P2P_OnPeerConnectionEstablishedInfo::k_iCallback));
+    if (notifs.empty()) {
+        pFrameResult_t res(new FrameResult);
+        mCachedOpcei = &res->CreateCallback<EOS_P2P_OnPeerConnectionEstablishedInfo>((CallbackFunc)NULL);
+        if (oldStatus == p2p_state_t::status_e::connection_loss) {
+            mCachedOpcei->ConnectionType = EOS_EConnectionEstablishedType::EOS_CET_Reconnection;
+        }
+        else mCachedOpcei->ConnectionType = EOS_EConnectionEstablishedType::EOS_CET_NewConnection;
+        mCachedOpcei->RemoteUserId = remote_id;
+        EOS_P2P_SocketId* socketId = new EOS_P2P_SocketId;
+        socketId->ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
+        strncpy(const_cast<char*>(socketId->SocketName), state.socket_name.c_str(), sizeof(EOS_P2P_SocketId::SocketName));
+        mCachedOpcei->SocketId = socketId;
+    }
     for (auto& notif : notifs)
     {
         EOS_P2P_OnPeerConnectionEstablishedInfo& opcei = notif->GetCallback<EOS_P2P_OnPeerConnectionEstablishedInfo>();
@@ -74,6 +90,7 @@ void EOSSDK_P2P::set_p2p_state_connected(EOS_ProductUserId remote_id, p2p_state_
         socketId->ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
         strncpy(const_cast<char*>(socketId->SocketName), state.socket_name.c_str(), sizeof(EOS_P2P_SocketId::SocketName));
         opcei.SocketId = socketId;
+        mCachedOpcei = &opcei;
         notif->GetFunc()(notif->GetFuncParam());
     }
 }
@@ -137,6 +154,10 @@ EOS_EResult EOSSDK_P2P::SendPacket(const EOS_P2P_SendPacketOptions* Options)
         case p2p_state_t::status_e::connected:
         {// We're connected, send the message now
             send_p2p_data(Options->RemoteUserId->to_string(), &data);
+            if (mCachedOpcei != NULL) {
+                set_p2p_state_connected(Options->RemoteUserId, p2p_state);
+                mCachedOpcei = NULL;
+            }
         }
         break;
 
@@ -353,6 +374,13 @@ EOS_NotificationId EOSSDK_P2P::AddNotifyPeerConnectionEstablished(const EOS_P2P_
     opcei.ConnectionType = EOS_EConnectionEstablishedType::EOS_CET_Reconnection;
     opcei.NetworkType = EOS_ENetworkConnectionType::EOS_NCT_DirectConnection;
 
+    if (mCachedOpcei != NULL) {
+        opcei.RemoteUserId = mCachedOpcei->RemoteUserId;
+        opcei.SocketId = mCachedOpcei->SocketId;
+        opcei.ConnectionType = mCachedOpcei->ConnectionType;
+        res->GetFunc()(res->GetFuncParam());
+    }
+
     return GetCB_Manager().add_notification(this, res);
 }
 
@@ -482,7 +510,7 @@ EOS_EResult EOSSDK_P2P::AcceptConnection(const EOS_P2P_AcceptConnectionOptions* 
         send_p2p_connection_response(Options->RemoteUserId->to_string(), resp);
     }
     
-    conn.status = p2p_state_t::status_e::connected;
+    set_p2p_state_connected(Options->RemoteUserId, conn);
     conn.connection_loss_start = {};
     return EOS_EResult::EOS_Success;
 }
