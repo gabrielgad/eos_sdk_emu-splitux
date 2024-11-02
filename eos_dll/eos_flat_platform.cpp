@@ -255,7 +255,7 @@ EOS_DECLARE_FUNC(EOS_ENetworkStatus) EOS_Platform_GetNetworkStatus(EOS_HPlatform
         return EOS_ENetworkStatus::EOS_NS_Disabled;
 
     auto pInst = reinterpret_cast<EOSSDK_Platform*>(Handle);
-    return EOS_ENetworkStatus::EOS_NS_Disabled;
+    return pInst->GetNetworkStatus();
 }
 
 

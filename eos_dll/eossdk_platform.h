@@ -124,6 +124,7 @@ namespace sdk
         EOS_EResult SetOverrideLocaleCode(const char* NewLocaleCode);
         EOS_EResult CheckForLauncherAndRestart();
         EOS_EResult SetNetworkStatus(const EOS_ENetworkStatus NewStatus);
+        EOS_ENetworkStatus GetNetworkStatus();
     };
 }
 

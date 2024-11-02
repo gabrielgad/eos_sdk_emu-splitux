@@ -689,4 +689,16 @@ EOS_EResult EOSSDK_Platform::SetNetworkStatus(const EOS_ENetworkStatus NewStatus
     return EOS_EResult::EOS_Success;
 }
 
+/**
+ * Retrieves the current network state as told to the SDK by the application.
+ *
+ * @return The current network status.
+ */
+
+EOS_ENetworkStatus EOSSDK_Platform::GetNetworkStatus() {
+    TRACE_FUNC();
+
+    return _network_status;
+}
+
 }
