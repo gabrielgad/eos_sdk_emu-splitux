@@ -364,7 +364,7 @@ EOS_DECLARE_FUNC(EOS_EApplicationStatus) EOS_Platform_GetApplicationStatus(EOS_H
         return EOS_EApplicationStatus::EOS_AS_Foreground;
 
     auto pInst = reinterpret_cast<EOSSDK_Platform*>(Handle);
-    return EOS_EApplicationStatus::EOS_AS_Foreground;
+    return pInst->GetApplicationStatus();
 }
 
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Platform_SetNetworkStatus(EOS_HPlatform Handle, const EOS_ENetworkStatus NewStatus) {

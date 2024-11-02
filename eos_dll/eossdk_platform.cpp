@@ -691,6 +691,18 @@ EOS_EResult EOSSDK_Platform::SetApplicationStatus(const EOS_EApplicationStatus N
 }
 
 /**
+ * Retrieves the current application state as told to the SDK by the application.
+ *
+ * @return The current application status.
+ */
+EOS_EApplicationStatus EOSSDK_Platform::GetApplicationStatus() {
+    TRACE_FUNC();
+
+    return _application_status;
+}
+
+
+/**
  * Notify a change in network state.
  *
  * @param NewStatus The new network status.
