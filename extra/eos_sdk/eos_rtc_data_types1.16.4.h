@@ -61,7 +61,7 @@ EOS_STRUCT(EOS_RTCData_AddNotifyParticipantUpdatedOptions001, (
  * This struct is passed in with a call to EOS_RTCData_OnParticipantUpdatedCallback registered event.
  */
 EOS_STRUCT(EOS_RTCData_ParticipantUpdatedCallbackInfo, (
-	enum { k_iCallback = k_iRTCCallbackBase + 0 };
+	enum { k_iCallback = k_iRTCDataCallbackBase + 0 };
 	/** Client-specified data passed into EOS_RTCData_AddNotifyParticipantUpdated. */
 	void* ClientData;
 	/** The Product User ID of the user who initiated this request. */
@@ -95,7 +95,7 @@ EOS_STRUCT(EOS_RTCData_AddNotifyDataReceivedOptions001, (
  * This struct is passed in with a call to EOS_RTCData_AddNotifyDataReceived registered event.
  */
 EOS_STRUCT(EOS_RTCData_DataReceivedCallbackInfo, (
-	enum { k_iCallback = k_iRTCCallbackBase + 1 };
+	enum { k_iCallback = k_iRTCDataCallbackBase + 1 };
 	/** Client-specified data passed into EOS_RTCData_AddNotifyDataReceived. */
 	void* ClientData;
 	/** The Product User ID of the user who initiated this request. */
@@ -133,7 +133,7 @@ EOS_STRUCT(EOS_RTCData_UpdateSendingOptions001, (
  * This struct is passed in with a call to EOS_RTCData_OnUpdateSendingCallback.
  */
 EOS_STRUCT(EOS_RTCData_UpdateSendingCallbackInfo, (
-	enum { k_iCallback = k_iRTCCallbackBase + 2 };
+	enum { k_iCallback = k_iRTCDataCallbackBase + 2 };
 	/** This returns:
 	 * EOS_Success if sending of channels of the local user was successfully enabled/disabled.
 	 * EOS_UnexpectedError otherwise.
@@ -177,7 +177,7 @@ EOS_STRUCT(EOS_RTCData_UpdateReceivingOptions001, (
  * This struct is passed in with a call to EOS_RTCData_OnUpdateReceivingCallback.
  */
 EOS_STRUCT(EOS_RTCData_UpdateReceivingCallbackInfo, (
-	enum { k_iCallback = k_iRTCCallbackBase + 3 };
+	enum { k_iCallback = k_iRTCDataCallbackBase + 3 };
 	/** This returns:
 	 * EOS_Success if receiving of channels of remote users was successfully enabled/disabled.
 	 * EOS_NotFound if the participant isn't found by ParticipantId.

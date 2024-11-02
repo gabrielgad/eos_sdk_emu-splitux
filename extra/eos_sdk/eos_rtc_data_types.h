@@ -4,7 +4,7 @@
 
 #include "eos_common.h"
 
-enum { k_iMetricsCallbackBase = 28000 };
+enum { k_iRTCDataCallbackBase = 28000 };
 // next free callback_id: k_iMetricsCallbackBase + 4
 
 #define EOS_RTCData_SendDataOptions					   EOS_RTCData_SendDataOptions001
