@@ -240,6 +240,26 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Platform_CheckForLauncherAndRestart(EOS_HPlatf
     return pInst->CheckForLauncherAndRestart();
 }
 
+EOS_DECLARE_FUNC(EOS_EResult) EOS_Platform_SetNetworkStatus(EOS_HPlatform Handle, const EOS_ENetworkStatus NewStatus) {
+    if (Handle == nullptr)
+        return EOS_EResult::EOS_InvalidParameters;
+
+    auto pInst = reinterpret_cast<EOSSDK_Platform*>(Handle);
+    return pInst->SetNetworkStatus(NewStatus);
+}
+
+EOS_DECLARE_FUNC(EOS_ENetworkStatus) EOS_Platform_GetNetworkStatus(EOS_HPlatform Handle)
+{
+    TRACE_FUNC();
+    if (Handle == nullptr)
+        return EOS_ENetworkStatus::EOS_NS_Disabled;
+
+    auto pInst = reinterpret_cast<EOSSDK_Platform*>(Handle);
+    return EOS_ENetworkStatus::EOS_NS_Disabled;
+}
+
+
+
 /////////////////////////////////////////////////////////
 // platform
 

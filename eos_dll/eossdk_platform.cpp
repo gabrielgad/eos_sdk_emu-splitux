@@ -670,4 +670,23 @@ EOS_EResult EOSSDK_Platform::CheckForLauncherAndRestart()
     return EOS_EResult::EOS_NoChange;
 }
 
+/**
+ * Notify a change in network state.
+ *
+ * @param NewStatus The new network status.
+ *
+ * @return An EOS_EResult that indicates whether we changed the network status successfully.
+ *         EOS_Success if the network was changed successfully.
+ *         EOS_InvalidParameters if the value of NewStatus is invalid.
+ */
+
+EOS_EResult EOSSDK_Platform::SetNetworkStatus(const EOS_ENetworkStatus NewStatus)
+{
+    TRACE_FUNC();
+
+    _network_status = NewStatus;
+
+    return EOS_EResult::EOS_Success;
+}
+
 }
