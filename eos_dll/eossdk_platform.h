@@ -40,6 +40,7 @@
 #include "eossdk_stats.h"
 #include "eossdk_titlestorage.h"
 #include "eossdk_leaderboards.h"
+#include "eossdk_rtcdata.h"
 
 namespace sdk
 {
@@ -84,6 +85,7 @@ namespace sdk
         EOSSDK_Stats             *_stats;
         EOSSDK_TitleStorage      *_titlestorage;
         EOSSDK_Leaderboards      *_leaderboards;
+        EOSSDK_RTCData           * _rtcdata;
 
         ~EOSSDK_Platform();
 
@@ -108,6 +110,7 @@ namespace sdk
         EOS_HAchievements      GetAchievementsInterface();
         EOS_HStats             GetStatsInterface();
         EOS_HLeaderboards      GetLeaderboardsInterface();
+        EOS_HRTCData           GetRTCDataInterface();
 
         EOS_EResult GetActiveCountryCode(EOS_EpicAccountId LocalUserId, char* OutBuffer, int32_t* InOutBufferLength);
         EOS_EResult GetActiveLocaleCode(EOS_EpicAccountId LocalUserId, char* OutBuffer, int32_t* InOutBufferLength);

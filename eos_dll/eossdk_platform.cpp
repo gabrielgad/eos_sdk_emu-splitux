@@ -43,7 +43,8 @@ EOSSDK_Platform::EOSSDK_Platform():
     _playerdatastorage(nullptr),
     _achievements     (nullptr),
     _stats            (nullptr),
-    _leaderboards     (nullptr)
+    _leaderboards     (nullptr),
+    _rtcdata          (nullptr)
 {
     _cb_manager        = new Callback_Manager;
     _network           = new Network;
@@ -177,6 +178,7 @@ void EOSSDK_Platform::Init(const EOS_Platform_Options* Options)
         _stats             = new EOSSDK_Stats;
         _titlestorage      = new EOSSDK_TitleStorage;
         _leaderboards      = new EOSSDK_Leaderboards;
+        _rtcdata           = new EOSSDK_RTCData;
 
         _presence->setup_myself();
         _userinfo->setup_myself();
@@ -207,6 +209,7 @@ void EOSSDK_Platform::Release()
         delete _connect;
         delete _auth;
         delete _metrics;
+        delete _rtcdata;
 
         _platform_init = false;
     }
@@ -431,6 +434,20 @@ EOS_HLeaderboards      EOSSDK_Platform::GetLeaderboardsInterface()
     GLOBAL_LOCK();
     return reinterpret_cast<EOS_HLeaderboards>(_leaderboards);
 }
+
+/**
+ * Get a handle to the RTCData Interface.
+ * @return EOS_HRTCData handle
+ *
+ * @see eos_rtc_data.h
+ * @see eos_rtc_data_types.h
+ */
+EOS_HRTCData      EOSSDK_Platform::GetRTCDataInterface()
+{
+    GLOBAL_LOCK();
+    return reinterpret_cast<EOS_HRTCData>(_rtcdata);
+}
+
 
 /**
  * Get the active country code that the SDK will send to services which require it.
