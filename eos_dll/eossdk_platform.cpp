@@ -44,7 +44,8 @@ EOSSDK_Platform::EOSSDK_Platform():
     _achievements     (nullptr),
     _stats            (nullptr),
     _leaderboards     (nullptr),
-    _rtcdata          (nullptr)
+    _rtc              (nullptr),
+    _rtc_admin        (nullptr)
 {
     _cb_manager        = new Callback_Manager;
     _network           = new Network;
@@ -178,7 +179,8 @@ void EOSSDK_Platform::Init(const EOS_Platform_Options* Options)
         _stats             = new EOSSDK_Stats;
         _titlestorage      = new EOSSDK_TitleStorage;
         _leaderboards      = new EOSSDK_Leaderboards;
-        _rtcdata           = new EOSSDK_RTCData;
+        _rtc               = new EOSSDK_RTC;
+        _rtc_admin         = new EOSSDK_RTCAdmin;
 
         _presence->setup_myself();
         _userinfo->setup_myself();
@@ -209,7 +211,8 @@ void EOSSDK_Platform::Release()
         delete _connect;
         delete _auth;
         delete _metrics;
-        delete _rtcdata;
+        delete _rtc;
+        delete _rtc_admin;
 
         _platform_init = false;
     }
@@ -436,18 +439,30 @@ EOS_HLeaderboards      EOSSDK_Platform::GetLeaderboardsInterface()
 }
 
 /**
- * Get a handle to the RTCData Interface.
- * @return EOS_HRTCData handle
+ * Get a handle to the RTC Interface.
+ * @return EOS_HRTC handle
  *
- * @see eos_rtc_data.h
- * @see eos_rtc_data_types.h
+ * @see eos_rtc.h
+ * @see eos_rtc_types.h
  */
-EOS_HRTCData      EOSSDK_Platform::GetRTCDataInterface()
+EOS_HRTC      EOSSDK_Platform::GetRTCInterface()
 {
     GLOBAL_LOCK();
-    return reinterpret_cast<EOS_HRTCData>(_rtcdata);
+    return reinterpret_cast<EOS_HRTC>(_rtc);
 }
 
+/**
+ * Get a handle to the RTC Admin Interface.
+ * @return EOS_HRTC handle
+ *
+ * @see eos_rtc_admin.h
+ * @see eos_rtc_admin_types.h
+ */
+EOS_HRTCAdmin      EOSSDK_Platform::GetRTCAdminInterface()
+{
+    GLOBAL_LOCK();
+    return reinterpret_cast<EOS_HRTCAdmin>(_rtc_admin);
+}
 
 /**
  * Get the active country code that the SDK will send to services which require it.

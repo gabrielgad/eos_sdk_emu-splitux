@@ -40,7 +40,8 @@
 #include "eossdk_stats.h"
 #include "eossdk_titlestorage.h"
 #include "eossdk_leaderboards.h"
-#include "eossdk_rtcdata.h"
+#include "eossdk_rtc.h"
+#include "eossdk_rtc_admin.h"
 
 namespace sdk
 {
@@ -85,7 +86,8 @@ namespace sdk
         EOSSDK_Stats             *_stats;
         EOSSDK_TitleStorage      *_titlestorage;
         EOSSDK_Leaderboards      *_leaderboards;
-        EOSSDK_RTCData           * _rtcdata;
+        EOSSDK_RTC               * _rtc;
+        EOSSDK_RTCAdmin          * _rtc_admin;
 
         ~EOSSDK_Platform();
 
@@ -110,7 +112,8 @@ namespace sdk
         EOS_HAchievements      GetAchievementsInterface();
         EOS_HStats             GetStatsInterface();
         EOS_HLeaderboards      GetLeaderboardsInterface();
-        EOS_HRTCData           GetRTCDataInterface();
+        EOS_HRTC               GetRTCInterface();
+        EOS_HRTCAdmin          GetRTCAdminInterface();
 
         EOS_EResult GetActiveCountryCode(EOS_EpicAccountId LocalUserId, char* OutBuffer, int32_t* InOutBufferLength);
         EOS_EResult GetActiveLocaleCode(EOS_EpicAccountId LocalUserId, char* OutBuffer, int32_t* InOutBufferLength);
@@ -142,3 +145,5 @@ inline sdk::EOSSDK_PlayerDataStorage& GetEOS_PlayerDataStorage() { return *GetEO
 inline sdk::EOSSDK_Achievements&      GetEOS_Achievements     () { return *GetEOS_Platform()._achievements;      }
 inline sdk::EOSSDK_Stats&             GetEOS_Stats            () { return *GetEOS_Platform()._stats;             }
 inline sdk::EOSSDK_Leaderboards&      GetEOS_Leaderboards     () { return *GetEOS_Platform()._leaderboards;      }
+inline sdk::EOSSDK_RTC&               GetEOS_RTC              () { return *GetEOS_Platform()._rtc;               }
+inline sdk::EOSSDK_RTCAdmin&          GetEOS_RTCAdmin         () { return *GetEOS_Platform()._rtc_admin;         }
