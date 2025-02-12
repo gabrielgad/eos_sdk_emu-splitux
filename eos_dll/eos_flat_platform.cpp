@@ -367,6 +367,17 @@ EOS_DECLARE_FUNC(EOS_EApplicationStatus) EOS_Platform_GetApplicationStatus(EOS_H
     return pInst->GetApplicationStatus();
 }
 
+EOS_DECLARE_FUNC(const char*) EOS_EApplicationStatus_ToString(EOS_EApplicationStatus ApplicationStatus) {
+    TRACE_FUNC();
+    switch (ApplicationStatus) {
+        case EOS_EApplicationStatus::EOS_AS_BackgroundConstrained: return "EOS_AS_BackgroundConstrained";
+        case EOS_EApplicationStatus::EOS_AS_BackgroundUnconstrained: return "EOS_AS_BackgroundUnconstrained";
+        case EOS_EApplicationStatus::EOS_AS_BackgroundSuspended: return "EOS_AS_BackgroundSuspended";
+        case EOS_EApplicationStatus::EOS_AS_Foreground: return "EOS_AS_Foreground";
+        default: return "EOS_AS_Foreground";
+    }
+}
+
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Platform_SetNetworkStatus(EOS_HPlatform Handle, const EOS_ENetworkStatus NewStatus) {
     if (Handle == nullptr)
         return EOS_EResult::EOS_InvalidParameters;
