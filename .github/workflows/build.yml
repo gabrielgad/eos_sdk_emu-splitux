@@ -1,0 +1,106 @@
+name: Build EOS SDK Emulator
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64, x86]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSVC
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: 'a34c873a9717a888f58dc05268dea15592c2f0ff'
+
+      - name: Install dependencies
+        run: |
+          vcpkg install protobuf:${{ matrix.arch }}-windows-static
+          vcpkg install nlohmann-json:${{ matrix.arch }}-windows-static
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -S . `
+            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.arch }}-windows-static `
+            -D${{ matrix.arch == 'x64' && 'X64' || 'X86' }}=ON `
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Install
+        run: cmake --install build --config Release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.arch }}
+          path: release/win${{ matrix.arch == 'x64' && '64' || '32' }}/
+
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [64]  # 32-bit Linux is rarely needed
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libprotobuf-dev protobuf-compiler nlohmann-json3-dev
+
+      - name: Configure CMake (64-bit)
+        if: matrix.arch == 64
+        run: cmake -B build -S . -DX64=ON -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Install
+        run: cmake --install build --config Release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: release/linux${{ matrix.arch }}/
+
+  package:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Package for splitux
+        run: |
+          mkdir -p dist/{win64,win32,linux64}
+          cp -r artifacts/windows-x64/* dist/win64/ || true
+          cp -r artifacts/windows-x86/* dist/win32/ || true
+          cp -r artifacts/linux-64/* dist/linux64/ || true
+
+      - name: Upload combined package
+        uses: actions/upload-artifact@v4
+        with:
+          name: eos-sdk-emu-splitux
+          path: dist/
