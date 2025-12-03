@@ -1,6 +1,22 @@
-# Nemirtingas Epic Emulator Redux
+# EOS SDK Emulator - Splitux Fork
 
-Full credit to my mentor, Nemirtingas, whose original work—driven by his enthusiastic support for piracy and strong opposition to Epic Games—provided the essential foundation for this emulator. While I personally disagree with his stance on piracy, I can’t overlook the significant impact of his contributions. Although his original repository was taken down—likely due to reasons best left unspoken—his influence remains crucial to this effort. For those interested in further technical support or guidance, Nemirtingas is available on http://element.io, where he’s more than willing to assist those aligned with his views on open software.
+Fork of [psfree/eos_sdk_emu](https://github.com/psfree/eos_sdk_emu) for use with Splitux local split-screen multiplayer.
+
+## Splitux Integration
+
+Built DLLs go in `dist/` for copying to splitux:
+```
+dist/
+├── win64/EOSSDK-Win64-Shipping.dll
+├── win32/EOSSDK-Win32-Shipping.dll
+└── linux64/libEOSSDK-Linux-Shipping.so
+```
+
+---
+
+# Nemirtingas Epic Emulator Redux (Upstream)
+
+Full credit to Nemirtingas, whose original work provided the essential foundation for this emulator. Although his original repository was taken down, his influence remains crucial to this effort.
 
 # Debug log levels
 
@@ -64,4 +80,3 @@ OFF  : no logs     , saves cpu usage when running the debug versions
 	- Hit "Add Entry" Add "X86" as a string set to "ON".
 	- Hit Configure, then Generate. Then hit Open Project
    	- If it throws an error change VCPKG-TARGET-TRIPLET from x64-windows to x86-windows . After that, try the above step again to generate.
- 
