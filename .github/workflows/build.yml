@@ -42,7 +42,6 @@ jobs:
         run: |
           .\vcpkg\vcpkg install protobuf:${{ matrix.arch }}-windows-static
           .\vcpkg\vcpkg install nlohmann-json:${{ matrix.arch }}-windows-static
-          .\vcpkg\vcpkg install abseil:${{ matrix.arch }}-windows-static
 
       - name: Configure CMake
         run: |
