@@ -87,7 +87,8 @@ void EOSSDK_Platform::Init(const EOS_Platform_Options* Options)
                 case EOS_PLATFORM_OPTIONS_API_011:
                 {
                     auto pf = reinterpret_cast<const EOS_Platform_Options011*>(Options);
-                    if (pf->RTCOptions != NULL) APP_LOG(Log::LogLevel::DEBUG, "RTCOptions = '%s'", pf->RTCOptions->ApiVersion);
+                    if (pf->RTCOptions != nullptr)
+                        APP_LOG(Log::LogLevel::DEBUG, "RTCOptions->ApiVersion = %d", pf->RTCOptions->ApiVersion);
                 }
                 case EOS_PLATFORM_OPTIONS_API_010:
                 case EOS_PLATFORM_OPTIONS_API_009:
@@ -95,10 +96,8 @@ void EOSSDK_Platform::Init(const EOS_Platform_Options* Options)
                 case EOS_PLATFORM_OPTIONS_API_007:
                 {
                     auto pf = reinterpret_cast<const EOS_Platform_Options007*>(Options);
-                    if (pf->CacheDirectory != nullptr)
-                        _ticket_budget_in_milliseconds = pf->TickBudgetInMilliseconds;
-
-                    APP_LOG(Log::LogLevel::DEBUG, "TickBudgetInMilliseconds = '%d'", _ticket_budget_in_milliseconds);
+                    _ticket_budget_in_milliseconds = pf->TickBudgetInMilliseconds;
+                    APP_LOG(Log::LogLevel::DEBUG, "TickBudgetInMilliseconds = %d", _ticket_budget_in_milliseconds);
                 }                
                 case EOS_PLATFORM_OPTIONS_API_006:
                 {
