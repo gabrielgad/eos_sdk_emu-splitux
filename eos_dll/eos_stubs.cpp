@@ -22,8 +22,10 @@
 
 #include "common_includes.h"
 
-// Include RTCAudio types (not included by default in eos_sdk.h)
-#include <eos_rtc_audio.h>
+// Include RTCAudio types only (not included by default in eos_sdk.h)
+// Note: We include eos_rtc_audio_types.h directly instead of eos_rtc_audio.h
+// to avoid duplicate function declarations
+#include <eos_rtc_audio_types.h>
 
 // Forward declarations for types not in SDK headers that are needed for newer SDK versions
 // These types may be added in future SDK versions but we need stubs now
