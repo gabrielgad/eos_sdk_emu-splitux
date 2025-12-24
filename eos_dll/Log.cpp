@@ -23,7 +23,7 @@
 #include "common_includes.h"
 
 decltype(Log::_log_user_param) Log::_log_user_param;
-decltype(Log::_log_level)      Log::_log_level = Log::LogLevel::DEBUG;
+decltype(Log::_log_level)      Log::_log_level = Log::LogLevel::OFF;
 decltype(Log::_log_func)       Log::_log_func  = default_log_func;
 
 void Log::default_log_func(void* user_param, Log::LogLevel lv, const char* log_message)

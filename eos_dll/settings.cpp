@@ -112,7 +112,17 @@ void Settings::load_settings()
 
 #ifndef DISABLE_LOG
     Log::LogLevel llvl;
-    switchstr(get_setting(settings, "log_level", std::string("DEBUG")))
+
+    // Check environment variable first (allows runtime override without recompile)
+    std::string env_log_level = get_env_var("EOS_EMU_LOG_LEVEL");
+    std::string log_level_str;
+    if (!env_log_level.empty()) {
+        log_level_str = env_log_level;
+    } else {
+        log_level_str = get_setting(settings, "log_level", std::string("OFF"));
+    }
+
+    switchstr(log_level_str)
     {
         casestr("TRACE"): llvl = Log::LogLevel::TRACE; break;
         casestr("DEBUG"): llvl = Log::LogLevel::DEBUG; break;
