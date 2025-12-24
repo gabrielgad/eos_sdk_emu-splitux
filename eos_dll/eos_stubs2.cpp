@@ -7,6 +7,40 @@
 
 #include "common_includes.h"
 
+// Forward declarations for types not in current SDK version
+#ifndef EOS_ECOM_QUERYOWNERSHIPBYSANDBOXIDS_API_LATEST
+#define EOS_ECOM_QUERYOWNERSHIPBYSANDBOXIDS_API_LATEST 1
+EOS_STRUCT(EOS_Ecom_QueryOwnershipBySandboxIdsOptions, (
+    int32_t ApiVersion;
+    EOS_EpicAccountId LocalUserId;
+    const char** SandboxIds;
+    uint32_t SandboxIdsCount;
+));
+typedef struct EOS_Ecom_QueryOwnershipBySandboxIdsCallbackInfoInternal {
+    EOS_EResult ResultCode;
+    void* ClientData;
+    EOS_EpicAccountId LocalUserId;
+} EOS_Ecom_QueryOwnershipBySandboxIdsCallbackInfo;
+typedef void (EOS_CALL* EOS_Ecom_OnQueryOwnershipBySandboxIdsCallback)(const EOS_Ecom_QueryOwnershipBySandboxIdsCallbackInfo* Data);
+#endif
+
+#ifndef EOS_ECOM_GETLASTREDEEMENTITLEMENTSCOUNT_API_LATEST
+#define EOS_ECOM_GETLASTREDEEMENTITLEMENTSCOUNT_API_LATEST 1
+EOS_STRUCT(EOS_Ecom_GetLastRedeemedEntitlementsCountOptions, (
+    int32_t ApiVersion;
+    EOS_EpicAccountId LocalUserId;
+));
+#endif
+
+#ifndef EOS_ECOM_COPYLASTREDEEMENTITLEMENTBYINDEX_API_LATEST
+#define EOS_ECOM_COPYLASTREDEEMENTITLEMENTBYINDEX_API_LATEST 1
+EOS_STRUCT(EOS_Ecom_CopyLastRedeemedEntitlementByIndexOptions, (
+    int32_t ApiVersion;
+    EOS_EpicAccountId LocalUserId;
+    uint32_t RedeemedEntitlementIndex;
+));
+#endif
+
 // ============================================================================
 // Auth Additional Stubs
 // ============================================================================
@@ -392,9 +426,8 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_IntegratedPlatform_SetUserPreLogoutCallback(EO
     return EOS_EResult::EOS_Success;
 }
 
-EOS_DECLARE_FUNC(EOS_EResult) EOS_IntegratedPlatform_ClearUserPreLogoutCallback(EOS_HIntegratedPlatform Handle, const EOS_IntegratedPlatform_ClearUserPreLogoutCallbackOptions* Options)
+EOS_DECLARE_FUNC(void) EOS_IntegratedPlatform_ClearUserPreLogoutCallback(EOS_HIntegratedPlatform Handle, const EOS_IntegratedPlatform_ClearUserPreLogoutCallbackOptions* Options)
 {
-    return EOS_EResult::EOS_Success;
 }
 
 EOS_DECLARE_FUNC(EOS_EResult) EOS_IntegratedPlatform_FinalizeDeferredUserLogout(EOS_HIntegratedPlatform Handle, const EOS_IntegratedPlatform_FinalizeDeferredUserLogoutOptions* Options)
