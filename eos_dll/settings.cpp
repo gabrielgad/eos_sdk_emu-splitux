@@ -112,7 +112,7 @@ void Settings::load_settings()
 
 #ifndef DISABLE_LOG
     Log::LogLevel llvl;
-    switchstr(get_setting(settings, "log_level", std::string("OFF")))
+    switchstr(get_setting(settings, "log_level", std::string("DEBUG")))
     {
         casestr("TRACE"): llvl = Log::LogLevel::TRACE; break;
         casestr("DEBUG"): llvl = Log::LogLevel::DEBUG; break;

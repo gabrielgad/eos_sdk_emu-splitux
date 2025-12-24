@@ -35,10 +35,23 @@ jobs:
       - name: Setup MSVC
         uses: microsoft/setup-msbuild@v2
 
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        id: cache-vcpkg
+        with:
+          path: |
+            vcpkg
+            !vcpkg/.git
+          key: vcpkg-windows-${{ matrix.arch }}-${{ hashFiles('.github/workflows/build.yml') }}
+          restore-keys: |
+            vcpkg-windows-${{ matrix.arch }}-
+
       - name: Clone vcpkg
+        if: steps.cache-vcpkg.outputs.cache-hit != 'true'
         run: git clone https://github.com/microsoft/vcpkg.git
 
       - name: Bootstrap vcpkg
+        if: steps.cache-vcpkg.outputs.cache-hit != 'true'
         run: .\vcpkg\bootstrap-vcpkg.bat
         shell: cmd
 
@@ -86,10 +99,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake build-essential curl zip unzip tar
 
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        id: cache-vcpkg
+        with:
+          path: |
+            vcpkg
+            !vcpkg/.git
+          key: vcpkg-linux-x64-${{ hashFiles('.github/workflows/build.yml') }}
+          restore-keys: |
+            vcpkg-linux-x64-
+
       - name: Clone vcpkg
+        if: steps.cache-vcpkg.outputs.cache-hit != 'true'
         run: git clone https://github.com/microsoft/vcpkg.git
 
       - name: Bootstrap vcpkg
+        if: steps.cache-vcpkg.outputs.cache-hit != 'true'
         run: ./vcpkg/bootstrap-vcpkg.sh
 
       - name: Install dependencies
