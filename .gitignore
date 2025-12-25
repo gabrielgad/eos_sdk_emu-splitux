@@ -48,3 +48,9 @@ nemirtingas_epic_emu*
 /OUT
 /NewEmuLauncher
 /NemirUtilities
+
+# Local build directories
+/build-local
+/build-mingw
+/build-test
+/build
