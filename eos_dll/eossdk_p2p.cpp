@@ -120,9 +120,17 @@ EOS_EResult EOSSDK_P2P::SendPacket(const EOS_P2P_SendPacketOptions* Options)
         return EOS_EResult::EOS_InvalidParameters;
 
     p2p_state_t& p2p_state = _p2p_connections[Options->RemoteUserId];
-    APP_LOG(Log::LogLevel::DEBUG, "SendPacket: state=%d, bytes=%u, remote=%s",
-            static_cast<int>(p2p_state.status), Options->DataLengthBytes,
-            Options->RemoteUserId->to_string().c_str());
+
+    // Log first 16 bytes of packet as hex for debugging
+    std::string hex_preview;
+    for (uint32_t i = 0; i < std::min(Options->DataLengthBytes, 16u); i++) {
+        char buf[4];
+        snprintf(buf, sizeof(buf), "%02x ", ((const uint8_t*)Options->Data)[i]);
+        hex_preview += buf;
+    }
+    APP_LOG(Log::LogLevel::INFO, "SendPacket: ch=%d, bytes=%u, hex=[%s]",
+            Options->Channel, Options->DataLengthBytes, hex_preview.c_str());
+
     P2P_Data_Message_pb data;
 
     switch (Options->ApiVersion)
@@ -304,8 +312,15 @@ EOS_EResult EOSSDK_P2P::ReceivePacket(const EOS_P2P_ReceivePacketOptions* Option
     *OutChannel = msg.channel();
     next_requested_channel = -1;
 
-    APP_LOG(Log::LogLevel::DEBUG, "ReceivePacket: delivered %u bytes from %s, channel=%d",
-            *OutBytesWritten, msg.user_id().c_str(), *OutChannel);
+    // Log first 16 bytes as hex for debugging
+    std::string hex_preview;
+    for (uint32_t i = 0; i < std::min(*OutBytesWritten, 16u); i++) {
+        char buf[4];
+        snprintf(buf, sizeof(buf), "%02x ", ((const uint8_t*)OutData)[i]);
+        hex_preview += buf;
+    }
+    APP_LOG(Log::LogLevel::INFO, "ReceivePacket: ch=%d, bytes=%u, hex=[%s]",
+            *OutChannel, *OutBytesWritten, hex_preview.c_str());
 
     queue->pop_front();
 
