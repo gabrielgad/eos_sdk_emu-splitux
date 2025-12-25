@@ -235,9 +235,11 @@ EOS_EResult EOSSDK_P2P::GetNextReceivedPacketSize(const EOS_P2P_GetNextReceivedP
 
     if (has_packet)
     {
+        APP_LOG(Log::LogLevel::DEBUG, "GetNextReceivedPacketSize: found packet, size=%u, channel=%d",
+                *OutPacketSizeBytes, next_requested_channel);
         return EOS_EResult::EOS_Success;
     }
-    
+
     *OutPacketSizeBytes = 0;
     return EOS_EResult::EOS_NotFound;
 }
@@ -257,11 +259,13 @@ EOS_EResult EOSSDK_P2P::GetNextReceivedPacketSize(const EOS_P2P_GetNextReceivedP
  */
 EOS_EResult EOSSDK_P2P::ReceivePacket(const EOS_P2P_ReceivePacketOptions* Options, EOS_ProductUserId* OutPeerId, EOS_P2P_SocketId* OutSocketId, uint8_t* OutChannel, void* OutData, uint32_t* OutBytesWritten)
 {
+    TRACE_FUNC();
     std::lock_guard<std::recursive_mutex> lk(local_mutex);
 
     if (Options == nullptr || OutPeerId == nullptr || OutSocketId == nullptr ||
         OutChannel == nullptr || OutData == nullptr || OutBytesWritten == nullptr)
     {
+        APP_LOG(Log::LogLevel::DEBUG, "ReceivePacket: InvalidParameters");
         return EOS_EResult::EOS_InvalidParameters;
     }
 
@@ -299,6 +303,9 @@ EOS_EResult EOSSDK_P2P::ReceivePacket(const EOS_P2P_ReceivePacketOptions* Option
     OutSocketId->SocketName[32] = 0;
     *OutChannel = msg.channel();
     next_requested_channel = -1;
+
+    APP_LOG(Log::LogLevel::DEBUG, "ReceivePacket: delivered %u bytes from %s, channel=%d",
+            *OutBytesWritten, msg.user_id().c_str(), *OutChannel);
 
     queue->pop_front();
 
