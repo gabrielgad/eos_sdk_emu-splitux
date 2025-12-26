@@ -56,6 +56,8 @@ EOS_P2P_OnPeerConnectionEstablishedInfo* mCachedOpcei = NULL;
 void EOSSDK_P2P::set_p2p_state_connected(EOS_ProductUserId remote_id, p2p_state_t& state)
 {
     p2p_state_t::status_e oldStatus = state.status;
+    APP_LOG(Log::LogLevel::INFO, "set_p2p_state_connected: oldStatus=%d, socket=%s, remote=%s",
+            static_cast<int>(oldStatus), state.socket_name.c_str(), remote_id->to_string().c_str());
     state.status = p2p_state_t::status_e::connected;
     for (auto& out_msgs : state.p2p_out_messages)
     {// Send all previously stored messages
@@ -65,6 +67,7 @@ void EOSSDK_P2P::set_p2p_state_connected(EOS_ProductUserId remote_id, p2p_state_
 
 
     std::vector<pFrameResult_t> notifs = std::move(GetCB_Manager().get_notifications(this, EOS_P2P_OnPeerConnectionEstablishedInfo::k_iCallback));
+    APP_LOG(Log::LogLevel::INFO, "set_p2p_state_connected: notifs_count=%zu", notifs.size());
     if (notifs.empty()) {
         pFrameResult_t res(new FrameResult);
         mCachedOpcei = &res->CreateCallback<EOS_P2P_OnPeerConnectionEstablishedInfo>((CallbackFunc)NULL);
