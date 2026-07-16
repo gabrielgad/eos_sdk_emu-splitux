@@ -11,6 +11,20 @@
 #define MAX_LOGIN_NOTIFICATIONS 8
 #define MAX_AUTH_EXPIRATION_NOTIFICATIONS 8
 
+// Deferred external-account-mapping queries (see connect.c). Redpoint's friend
+// pipeline calls QueryExternalAccountMappings then GetExternalAccountMapping and
+// caches the friend's PUID from that ONE resolution. A LAN peer's Steam->PUID
+// mapping only becomes known once its beacon arrives (~seconds after goldberg
+// surfaces the Steam friend), so an instant-Success query races: the first
+// resolve returns NULL and the friend is baked with a null PUID forever. We hold
+// the query callback until every requested id resolves (or a timeout) so the
+// first resolution succeeds. Redpoint tolerates the async latency (real EOS
+// mapping queries hit a backend).
+#define MAX_PENDING_MAPPING_QUERIES 32
+#define PENDING_QUERY_MAX_IDS 16
+#define PENDING_QUERY_ID_LEN 64
+#define PENDING_QUERY_TIMEOUT_MS 8000
+
 // Internal representation of a ProductUserId
 typedef struct EOS_ProductUserIdDetails {
     uint32_t magic;          // 0x50554944 = "PUID"
@@ -40,6 +54,18 @@ typedef struct {
     bool active;
 } AuthExpirationNotification;
 
+// A QueryExternalAccountMappings call held until its ids resolve (or timeout).
+typedef struct {
+    bool active;
+    EOS_Connect_OnQueryExternalAccountMappingsCallback callback;
+    void* client_data;
+    EOS_ProductUserId local_user_id;
+    EOS_EExternalAccountType account_type;
+    char ids[PENDING_QUERY_MAX_IDS][PENDING_QUERY_ID_LEN];
+    int id_count;
+    uint64_t deadline_ms;
+} PendingMappingQuery;
+
 // Connect state
 typedef struct ConnectState {
     uint32_t magic;  // 0x434F4E4E = "CONN"
@@ -61,11 +87,19 @@ typedef struct ConnectState {
     int auth_expiration_notification_count;
     EOS_NotificationId next_notification_id;
 
+    // Deferred external-account-mapping queries, drained by connect_tick().
+    PendingMappingQuery pending_queries[MAX_PENDING_MAPPING_QUERIES];
+    int pending_query_count;
+
 } ConnectState;
 
 // Creation/destruction (called by platform)
 ConnectState* connect_create(PlatformState* platform);
 void connect_destroy(ConnectState* state);
+
+// Per-tick pump: fires any deferred external-account-mapping query whose ids
+// have resolved (peer beacons arrived) or whose deadline has passed.
+void connect_tick(ConnectState* state);
 
 // Internal helpers
 EOS_ProductUserId connect_generate_user_id(ConnectState* state, int user_index);

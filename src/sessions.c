@@ -174,16 +174,15 @@ void sessions_tick(SessionsState* state) {
         state->last_announce_time = now;
     }
 
-    // Copy discovered sessions from discovery cache to our array
-    int discovered_count = 0;
-    Session* discovered = discovery_get_sessions(state->discovery, &discovered_count);
-
-    // Copy up to MAX_DISCOVERED_SESSIONS
+    // Copy discovered sessions from discovery cache to our array. Use the
+    // correctly-strided accessor (the cache is CachedSession[], not Session[]).
+    int discovered_count = discovery_get_session_count(state->discovery);
     state->discovered_session_count = (discovered_count > MAX_DISCOVERED_SESSIONS)
         ? MAX_DISCOVERED_SESSIONS : discovered_count;
 
     for (int i = 0; i < state->discovered_session_count; i++) {
-        state->discovered_sessions[i] = discovered[i];
+        const Session* d = discovery_get_session_at(state->discovery, i);
+        if (d) state->discovered_sessions[i] = *d;
     }
 
     if (state->discovered_session_count > 0) {
@@ -380,6 +379,23 @@ EOS_DECLARE_FUNC(void) EOS_Sessions_UpdateSession(
         // Apply modifications
         *existing = mod->session;
         existing->last_updated = get_time_ms();
+
+        // Re-stamp our REAL P2P listen endpoint. The game's SessionModification
+        // carries its own HostAddress — the symbolic EOS address
+        // (<puid>.<socket>.eosp2p:<ch>) — which just overwrote the concrete ip:port
+        // we stamped at create. Our LAN transport can only route a real ip:port, so
+        // ALWAYS re-assert it here (mirrors the create branch); otherwise the first
+        // post-load UpdateSession clobbers host_address to the symbolic form and the
+        // joiner's discovered session carries an unroutable endpoint -> its P2P
+        // CONNECT goes nowhere and the join hangs.
+        if (state->platform && state->platform->p2p) {
+            uint16_t p2p_port = p2p_get_listen_port(state->platform->p2p);
+            const char* p2p_ip = p2p_get_listen_ip(state->platform->p2p);
+            if (p2p_ip && p2p_ip[0] && p2p_port != 0) {
+                format_address(existing->host_address, sizeof(existing->host_address), p2p_ip, p2p_port);
+                EOS_LOG_INFO(">>> Session host_address re-stamped on update as %s", existing->host_address);
+            }
+        }
 
         info.ResultCode = EOS_Success;
         info.SessionName = existing->session_name;

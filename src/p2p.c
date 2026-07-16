@@ -5,12 +5,14 @@
 #include "internal/p2p_internal.h"
 #include "internal/platform_internal.h"
 #include "internal/connect_internal.h"
+#include "internal/sessions_internal.h"  // discovered_sessions -> resolve real LAN endpoint
 #include "internal/callbacks.h"
 #include "internal/logging.h"
 #include "lan_p2p.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <ctype.h>
 
 // Magic number for state validation
 #define P2P_MAGIC 0x50325032  // "P2P2"
@@ -460,9 +462,81 @@ const char* p2p_get_listen_ip(P2PState* state) {
     return lan_p2p_get_local_ip(state->sock);
 }
 
+// True only for a concrete "a.b.c.d:port" our UDP transport can route. The EOS
+// symbolic address (<puid>.<socket>.eosp2p:<ch>) contains letters, so it fails.
+static bool address_is_ip_port(const char* s) {
+    if (!s || !s[0]) return false;
+    const char* colon = strrchr(s, ':');
+    if (!colon || colon == s || !colon[1]) return false;
+    for (const char* p = s; p < colon; p++) {
+        if (!isdigit((unsigned char)*p) && *p != '.') return false;
+    }
+    for (const char* p = colon + 1; *p; p++) {
+        if (!isdigit((unsigned char)*p)) return false;
+    }
+    return true;
+}
+
+// The friend/presence join path can hand us the game's symbolic EOS address as a
+// peer's "host address", which the loopback UDP transport can't route. But the
+// host also broadcasts its concrete ip:port in its LAN session announce
+// (Session.host_address, matched by owner puid). Return that real endpoint, or
+// NULL if not discovered yet.
+static const char* p2p_resolve_endpoint_from_discovery(P2PState* state, const char* peer_hex) {
+    if (!state || !state->platform || !state->platform->sessions || !peer_hex || !peer_hex[0]) {
+        return NULL;
+    }
+    SessionsState* ss = state->platform->sessions;
+    for (int i = 0; i < ss->discovered_session_count; i++) {
+        Session* ds = &ss->discovered_sessions[i];
+        if (strncmp(ds->owner_id_string, peer_hex, OWNER_ID_STRING_LEN) != 0) continue;
+        if (address_is_ip_port(ds->host_address)) return ds->host_address;
+    }
+    return NULL;
+}
+
+// If a connection's peer_address isn't a routable ip:port (empty, or a symbolic
+// EOS address), try to fill it from LAN discovery. Returns true if it now holds a
+// routable endpoint. Called at registration and every tick so a late-arriving
+// announce still heals a stuck connection.
+static bool p2p_heal_peer_address(P2PState* state, PeerConnection* conn) {
+    if (address_is_ip_port(conn->peer_address)) return true;
+    const char* real = p2p_resolve_endpoint_from_discovery(state, conn->peer_id_string);
+    if (!real) return false;
+    if (strcmp(conn->peer_address, real) != 0) {
+        EOS_LOG_INFO("P2P: healed peer %s address '%s' -> real LAN endpoint %s",
+                     conn->peer_id_string,
+                     conn->peer_address[0] ? conn->peer_address : "(empty)", real);
+    }
+    strncpy(conn->peer_address, real, sizeof(conn->peer_address) - 1);
+    conn->peer_address[sizeof(conn->peer_address) - 1] = '\0';
+    return true;
+}
+
 // Register peer address (called by sessions module)
 void p2p_register_peer_address(P2PState* state, EOS_ProductUserId peer, const char* address) {
     if (!state || state->magic != P2P_MAGIC || !peer || !address) return;
+
+    // A symbolic EOS address (from the friend/presence join path) is not routable
+    // by our UDP transport. Prefer the host's real ip:port from its LAN announce;
+    // if not discovered yet, store nothing routable (empty) and let p2p_tick heal
+    // it once the announce lands. A genuine ip:port is stored as-is.
+    char peer_hex[OWNER_ID_STRING_LEN];
+    product_user_id_to_string(peer, peer_hex, sizeof(peer_hex));
+    const char* store = address;
+    if (!address_is_ip_port(address)) {
+        const char* real = p2p_resolve_endpoint_from_discovery(state, peer_hex);
+        if (real) {
+            EOS_LOG_INFO("P2P: register '%s' for %s is symbolic; using discovered endpoint %s",
+                         address, peer_hex, real);
+            store = real;
+        } else {
+            EOS_LOG_WARN("P2P: register '%s' for %s is symbolic and no LAN endpoint discovered yet;"
+                         " will heal from announce", address, peer_hex);
+            store = "";  // leave pending; p2p_tick heals it
+        }
+    }
+    address = store;
 
     // Find existing connection or create placeholder
     bool found = false;
@@ -648,7 +722,9 @@ void p2p_tick(P2PState* state) {
         PeerConnection* conn = &state->connections[i];
         if (!conn->valid) continue;
         if (conn->state != CONN_STATE_REQUESTING) continue;
-        if (conn->peer_address[0] == '\0') continue;  // no target yet
+        // Heal a missing/symbolic peer address from a (possibly late) LAN announce
+        // before trying to send; skip only if still unroutable this tick.
+        if (!p2p_heal_peer_address(state, conn)) continue;
 
         if ((now - state->last_connect_send) >= P2P_CONNECT_RESEND_MS) {
             p2p_send_msg(state, conn, MSG_CONNECT, 0, NULL, 0);

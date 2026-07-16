@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "eos/eos_sessions.h"
 #include "eos/eos_sessions_types.h"
 #include "internal/sessions_internal.h"
@@ -25,13 +26,33 @@ static EOS_SessionDetails_Info* session_to_info(const Session* session) {
 
     // Allocate and copy session ID
     char* session_id = calloc(1, strlen(session->session_id) + 1);
-    // EOS HostAddress must stay EMPTY for an EOS/P2P session: the game builds its
-    // connect string from the OWNER puid (EOS:<puid>:GameNetDriver). Our internal
+    // EOS HostAddress normally stays EMPTY for an EOS/P2P session: the game builds
+    // its connect string from the OWNER puid (EOS:<puid>:GameNetDriver). Our internal
     // ip:port P2P endpoint lives in the Session struct's host_address (consumed by
     // EOS_Sessions_JoinSession -> p2p_register_peer_address) and must NOT leak into
     // the EOS_SessionDetails_Info the game reads — an ip:port here breaks the game's
     // connect-string resolution (E007 right after JoinSession, before NetDriver).
-    char* host_address = calloc(1, 1);
+    //
+    // OPT-IN (EOSLAN_SESSION_HOSTADDR=1): some Steam+EOS titles that transport over
+    // the RedpointSteam runtime platform (e.g. RS Dragonwilds) read this HostAddress
+    // as the host's connect endpoint; with it empty the join lands but the matcher
+    // bails ("Override IP is not appropriate" -> empty travel URL -> kicked to menu).
+    // For those, surface the real LAN ip:port so the game can direct-connect. Gated
+    // per-handler so EOS-P2P titles keep the empty default.
+    // RedpointEOS+Steam titles like RS Dragonwilds transport over EOS P2P: the HOST
+    // listens on '<ownerPUID>.default.eosp2p:127' and the JOINER must connect to the
+    // SAME symbolic address to take the EOS-P2P path (InitConnect "for P2P connection").
+    // If SessionDetails HostAddress is EMPTY the matcher bails (empty '?p=?c' travel ->
+    // kicked); if it's a raw ip:port the joiner wrongly opens an IP netconnection
+    // (RedpointEOSIpNetConnection) straight to our emu's P2P UDP port and TIMES OUT
+    // (host is P2P-listening, joiner speaks raw UE netcode -> never meet). So when
+    // opted in, expose the owner's EOS-P2P LISTEN address (synthesized from the owner
+    // puid), NOT our internal ip:port. The real ip:port stays in session->host_address
+    // purely for emu P2P ROUTING (EOS_Sessions_JoinSession -> p2p_register_peer_address).
+    const char* expose_hostaddr = getenv("EOSLAN_SESSION_HOSTADDR");
+    bool use_hostaddr = expose_hostaddr && expose_hostaddr[0] == '1'
+                        && session->owner_id_string[0] != '\0';
+    char* host_address = calloc(1, use_hostaddr ? 64 : 1);
     char* bucket_id = calloc(1, strlen(session->bucket_id) + 1);
 
     if (!session_id || !host_address || !bucket_id) {
@@ -45,6 +66,11 @@ static EOS_SessionDetails_Info* session_to_info(const Session* session) {
 
     strcpy(session_id, session->session_id);
     strcpy(bucket_id, session->bucket_id);
+    if (use_hostaddr) {
+        snprintf(host_address, 64, "%s.default.eosp2p:127", session->owner_id_string);
+        EOS_LOG_INFO(">>> SessionDetails HostAddress exposed as '%s' (EOS-P2P symbolic; real ip:port stays internal)",
+                     host_address);
+    }
 
     // Fill settings
     settings->ApiVersion = EOS_SESSIONDETAILS_SETTINGS_API_LATEST;

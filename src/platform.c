@@ -1,6 +1,8 @@
 #include "eos/eos_sdk.h"
 #include "eos/eos_init.h"
 #include "eos/eos_connect.h"
+#include "eos/eos_playerdatastorage.h"
+#include "eos/eos_titlestorage.h"
 #include "internal/platform_internal.h"
 #include "internal/connect_internal.h"
 #include "internal/sessions_internal.h"
@@ -269,6 +271,12 @@ EOS_DECLARE_FUNC(void) EOS_Platform_Tick(EOS_HPlatform Handle) {
         sessions_tick(platform->sessions);
     }
 
+    // Resume any external-account-mapping queries whose peer beacons have now
+    // arrived (must run AFTER sessions_tick so freshly-received beacons count).
+    if (platform->connect) {
+        connect_tick(platform->connect);
+    }
+
     // Announce newly-discovered peers to the game via friends/presence
     // notifications (so friends-list Join UIs refresh and show the host).
     social_bridge_tick(platform);
@@ -383,5 +391,61 @@ EOS_DECLARE_FUNC(const char*) EOS_EResult_ToString(EOS_EResult Result) {
         case EOS_LimitExceeded: return "EOS_LimitExceeded";
         case EOS_Disabled: return "EOS_Disabled";
         default: return "EOS_UnknownError";
+    }
+}
+
+// ============ PlayerDataStorage (cloud saves) ============
+// The emu keeps no cloud storage — saves are local — but a title's FrontEnd can
+// block the main menu on the cloud-save file list resolving before it will show
+// "Continue"/save slots. EOS_Platform_GetPlayerDataStorageInterface (palworld_stubs.c)
+// returns the platform handle itself, so Handle here IS the PlatformState. The old
+// no-op stub never fired the completion callback, so RS Dragonwilds' login/FrontEnd
+// waited forever. Report Success with zero files so the menu proceeds.
+EOS_DECLARE_FUNC(void) EOS_PlayerDataStorage_QueryFileList(
+    EOS_HPlayerDataStorage Handle,
+    const EOS_PlayerDataStorage_QueryFileListOptions* Options,
+    void* ClientData,
+    const EOS_PlayerDataStorage_OnQueryFileListCompleteCallback CompletionCallback
+) {
+    PlatformState* platform = (PlatformState*)Handle;
+
+    EOS_PlayerDataStorage_QueryFileListCallbackInfo info;
+    memset(&info, 0, sizeof(info));
+    info.ResultCode = EOS_Success;
+    info.ClientData = ClientData;
+    info.LocalUserId = Options ? Options->LocalUserId : NULL;
+    info.FileCount = 0;
+
+    EOS_LOG_INFO("PlayerDataStorage_QueryFileList: reporting 0 cloud files (Success)");
+
+    if (CompletionCallback && platform && platform->callbacks) {
+        callback_queue_push(platform->callbacks, (void*)CompletionCallback, &info, sizeof(info));
+    }
+}
+
+// EOS_TitleStorage_QueryFileList — same shape as PlayerDataStorage: the old
+// palworld_stubs.c one-liner DROPPED its completion callback, so any FrontEnd flow
+// that awaits title-storage enumeration would block forever (the audit's only
+// callback-dropper). GetTitleStorageInterface returns the platform handle, so
+// Handle IS PlatformState. Report Success with zero files so the caller proceeds.
+EOS_DECLARE_FUNC(void) EOS_TitleStorage_QueryFileList(
+    EOS_HTitleStorage Handle,
+    const EOS_TitleStorage_QueryFileListOptions* Options,
+    void* ClientData,
+    const EOS_TitleStorage_OnQueryFileListCompleteCallback CompletionCallback
+) {
+    PlatformState* platform = (PlatformState*)Handle;
+
+    EOS_TitleStorage_QueryFileListCallbackInfo info;
+    memset(&info, 0, sizeof(info));
+    info.ResultCode = EOS_Success;
+    info.ClientData = ClientData;
+    info.LocalUserId = Options ? Options->LocalUserId : NULL;
+    info.FileCount = 0;
+
+    EOS_LOG_INFO("TitleStorage_QueryFileList: reporting 0 title files (Success)");
+
+    if (CompletionCallback && platform && platform->callbacks) {
+        callback_queue_push(platform->callbacks, (void*)CompletionCallback, &info, sizeof(info));
     }
 }

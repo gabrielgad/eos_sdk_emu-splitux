@@ -530,6 +530,39 @@ const char* social_bridge_resolve_epic_by_puid(PlatformState* p, const char* pui
     return NULL;
 }
 
+// Look up a user's Steam external account (id + display name) by ProductUserId, for
+// EOS_Connect_CopyProductUserInfo / CopyProductUserExternalAccountByAccountType /
+// GetProductUserExternalAccountCount. Works for the local user (our EOSLAN_STEAM_ID +
+// auth display name) and for any discovered peer (steam id + name from its LAN
+// beacon). Returns 1 and fills out_steam/out_name when a Steam id is known, else 0.
+// out_steam/out_name may be NULL if the caller only wants the presence check.
+int social_bridge_external_account_by_puid(PlatformState* p, const char* puid,
+                                           char* out_steam, int steam_sz,
+                                           char* out_name, int name_sz) {
+    if (!p || !puid || !puid[0]) return 0;
+    const char* steam = NULL;
+    const char* name = NULL;
+    const char* self = local_product_id_string(p);
+    if (self && strncmp(puid, self, PRODUCT_USER_ID_LENGTH) == 0) {
+        steam = local_steam_id_string();
+        name = g_auth_state.display_name;
+    } else {
+        refresh_peers(p);
+        for (int i = 0; i < g_peer_count; i++) {
+            if (g_peers[i].valid && g_peers[i].puid[0] &&
+                strncmp(g_peers[i].puid, puid, PRODUCT_USER_ID_LENGTH) == 0) {
+                steam = g_peers[i].steam_id[0] ? g_peers[i].steam_id : NULL;
+                name = g_peers[i].display_name;
+                break;
+            }
+        }
+    }
+    if (!steam || !steam[0]) return 0;  // no Steam external account known
+    if (out_steam && steam_sz > 0) { strncpy(out_steam, steam, steam_sz - 1); out_steam[steam_sz - 1] = '\0'; }
+    if (out_name && name_sz > 0) { strncpy(out_name, name ? name : "", name_sz - 1); out_name[name_sz - 1] = '\0'; }
+    return 1;
+}
+
 // Resolve a STEAM external id -> the matching peer's EpicAccountId STRING (or NULL).
 // No PlatformState needed (uses the last-refreshed g_peers table) so
 // EOS_EpicAccountId_FromString can be made to map a Steam external id to the peer's

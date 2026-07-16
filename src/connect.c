@@ -2,7 +2,8 @@
 #include "internal/auth_internal.h"
 #include "internal/logging.h"
 #include "internal/callbacks.h"
-#include "internal/sessions_internal.h"  // discovered_sessions for external-account mapping
+#include "internal/sessions_internal.h"  // discovered_sessions for external-account mapping + social bridge resolvers
+#include "lan_common.h"                   // get_time_ms for deferred-query deadlines
 #include "eos/eos_connect.h"
 #include "eos/eos_connect_types.h"
 #include <stdlib.h>
@@ -864,21 +865,130 @@ EOS_DECLARE_FUNC(void) EOS_Connect_TransferDeviceIdAccount(
     }
 }
 
+// Does an external id (of the given auth type) currently resolve to a peer's
+// ProductUserId? Mirrors GetExternalAccountMapping's per-type dispatch, so a
+// "resolved" answer here guarantees the subsequent Get succeeds.
+static bool external_id_resolves(PlatformState* platform, EOS_EExternalAccountType type,
+                                 const char* id) {
+    if (!platform || !id || !id[0]) return false;
+    EOS_ProductUserId puid = (type == EOS_EAT_STEAM)
+        ? social_bridge_resolve_puid_by_steam(platform, id)
+        : social_bridge_resolve_puid(platform, id);
+    return puid != NULL;
+}
+
+static void fire_query_mappings_callback(const PendingMappingQuery* q) {
+    if (!q->callback) return;
+    EOS_Connect_QueryExternalAccountMappingsCallbackInfo info = {0};
+    info.ResultCode = EOS_Success;  // the QUERY succeeds; individual Gets may 404
+    info.ClientData = q->client_data;
+    info.LocalUserId = q->local_user_id;
+    q->callback(&info);
+}
+
+// Redpoint's friend pipeline resolves each friend's PUID EXACTLY ONCE, right
+// after goldberg surfaces the friend, and caches it. On LAN a peer's Steam->PUID
+// mapping isn't known until its beacon arrives (a few seconds later), so an
+// instant-Success query loses the race: the first GetExternalAccountMapping
+// returns NULL and the friend is baked with a null PUID -> FindFriendSession:
+// "Friend user ID was invalid" forever. So HOLD the query callback until every
+// requested id resolves (or PENDING_QUERY_TIMEOUT_MS elapses). Redpoint waits on
+// the callback before calling Get, so the one-shot resolution then succeeds.
+// Ids that already resolve fire immediately (fast path, no regression).
 EOS_DECLARE_FUNC(void) EOS_Connect_QueryExternalAccountMappings(
     EOS_HConnect Handle,
     const EOS_Connect_QueryExternalAccountMappingsOptions* Options,
     void* ClientData,
     const EOS_Connect_OnQueryExternalAccountMappingsCallback CompletionDelegate
 ) {
-    EOS_LOG_INFO(">>> QueryExternalAccountMappings called");
+    EOS_LOG_INFO(">>> QueryExternalAccountMappings called (type=%d, %u id(s))",
+                 Options ? (int)Options->AccountIdType : -1,
+                 Options ? Options->ExternalAccountIdCount : 0);
+    ConnectState* state = (ConnectState*)Handle;
 
-    if (CompletionDelegate) {
-        EOS_Connect_QueryExternalAccountMappingsCallbackInfo info = {0};
-        info.ResultCode = EOS_Success;  // Return success
-        info.ClientData = ClientData;
-        info.LocalUserId = Options ? Options->LocalUserId : NULL;
-        EOS_LOG_INFO(">>> QueryExternalAccountMappings returning Success");
-        CompletionDelegate(&info);
+    if (!CompletionDelegate) return;
+
+    PendingMappingQuery q = {0};
+    q.callback = CompletionDelegate;
+    q.client_data = ClientData;
+    q.local_user_id = Options ? Options->LocalUserId : NULL;
+    q.account_type = Options ? Options->AccountIdType : EOS_EAT_EPIC;
+
+    PlatformState* platform = state ? state->platform : NULL;
+    bool all_resolved = true;
+    if (Options && Options->ExternalAccountIds && Options->ExternalAccountIdCount > 0) {
+        for (uint32_t i = 0; i < Options->ExternalAccountIdCount; i++) {
+            const char* id = Options->ExternalAccountIds[i];
+            if (!id) continue;
+            if (!external_id_resolves(platform, q.account_type, id)) {
+                all_resolved = false;
+                if (q.id_count < PENDING_QUERY_MAX_IDS) {
+                    strncpy(q.ids[q.id_count], id, PENDING_QUERY_ID_LEN - 1);
+                    q.ids[q.id_count][PENDING_QUERY_ID_LEN - 1] = '\0';
+                    q.id_count++;
+                }
+            }
+        }
+    }
+
+    // Everything already known (or nothing to resolve) -> complete now.
+    if (all_resolved || q.id_count == 0) {
+        EOS_LOG_INFO(">>> QueryExternalAccountMappings returning Success (resolved now)");
+        fire_query_mappings_callback(&q);
+        return;
+    }
+
+    // Otherwise defer until the peer beacon(s) land or we time out.
+    if (state && state->pending_query_count < MAX_PENDING_MAPPING_QUERIES) {
+        q.active = true;
+        q.deadline_ms = get_time_ms() + PENDING_QUERY_TIMEOUT_MS;
+        state->pending_queries[state->pending_query_count++] = q;
+        EOS_LOG_INFO(">>> QueryExternalAccountMappings DEFERRED: %d id(s) unresolved, waiting for beacon (<=%dms)",
+                     q.id_count, PENDING_QUERY_TIMEOUT_MS);
+    } else {
+        // No room to defer (or no state) -> fall back to immediate completion.
+        EOS_LOG_WARN(">>> QueryExternalAccountMappings: cannot defer, completing immediately");
+        fire_query_mappings_callback(&q);
+    }
+}
+
+void connect_tick(ConnectState* state) {
+    if (!state || state->pending_query_count == 0) return;
+    uint64_t now = get_time_ms();
+
+    // Two-phase to survive reentrancy: a fired callback may synchronously issue a
+    // fresh QueryExternalAccountMappings (Redpoint's GetUsersByExternalAccountIds
+    // chains one), appending to pending_queries. So first snapshot the ready ones
+    // and COMPACT the live array, then fire from the snapshot.
+    PendingMappingQuery ready_now[MAX_PENDING_MAPPING_QUERIES];
+    int ready_count = 0;
+    int w = 0;
+    for (int r = 0; r < state->pending_query_count; r++) {
+        PendingMappingQuery* q = &state->pending_queries[r];
+        if (!q->active) continue;
+
+        bool ready = true;
+        for (int i = 0; i < q->id_count; i++) {
+            if (!external_id_resolves(state->platform, q->account_type, q->ids[i])) {
+                ready = false;
+                break;
+            }
+        }
+        bool timed_out = now >= q->deadline_ms;
+        if (ready || timed_out) {
+            EOS_LOG_INFO(">>> QueryExternalAccountMappings resumed: %s -> firing Success",
+                         ready ? "ids resolved" : "TIMEOUT (ids still unresolved)");
+            ready_now[ready_count++] = *q;
+        } else if (w != r) {
+            state->pending_queries[w++] = *q;  // still waiting -> keep
+        } else {
+            w++;
+        }
+    }
+    state->pending_query_count = w;
+
+    for (int i = 0; i < ready_count; i++) {
+        fire_query_mappings_callback(&ready_now[i]);
     }
 }
 
@@ -934,12 +1044,44 @@ EOS_DECLARE_FUNC(EOS_ProductUserId) EOS_Connect_GetExternalAccountMapping(
     return NULL;
 }
 
+// Build a heap EOS_Connect_ExternalAccountInfo describing a user's Steam external
+// account (single block, info struct FIRST so ExternalAccountInfo_Release frees the
+// whole thing), or NULL if no Steam account is known for this puid. Used by
+// CopyProductUserInfo + CopyProductUserExternalAccountByAccountType so the game can
+// read real peer identity (Steam id + name) via the Connect interface.
+static EOS_Connect_ExternalAccountInfo* build_ext_account(PlatformState* platform, EOS_ProductUserId target) {
+    if (!platform || !target) return NULL;
+    const char* puid = ((EOS_ProductUserIdDetails*)target)->id_string;
+    char steam[24]; char name[64];
+    if (!social_bridge_external_account_by_puid(platform, puid, steam, (int)sizeof(steam), name, (int)sizeof(name))) {
+        return NULL;
+    }
+    typedef struct {
+        EOS_Connect_ExternalAccountInfo info;
+        char account_id[24];
+        char display_name[64];
+    } ExtAcctBlock;
+    ExtAcctBlock* blk = calloc(1, sizeof(ExtAcctBlock));
+    if (!blk) return NULL;
+    strncpy(blk->account_id, steam, sizeof(blk->account_id) - 1);
+    strncpy(blk->display_name, name, sizeof(blk->display_name) - 1);
+    blk->info.ApiVersion = EOS_CONNECT_EXTERNALACCOUNTINFO_API_LATEST;
+    blk->info.ProductUserId = target;                 // interned handle, do not free here
+    blk->info.DisplayName = blk->display_name[0] ? blk->display_name : NULL;
+    blk->info.AccountId = blk->account_id;
+    blk->info.AccountIdType = EOS_EAT_STEAM;
+    blk->info.LastLoginTime = EOS_CONNECT_TIME_UNDEFINED;
+    return &blk->info;
+}
+
 EOS_DECLARE_FUNC(uint32_t) EOS_Connect_GetProductUserExternalAccountCount(
     EOS_HConnect Handle,
     const EOS_Connect_GetProductUserExternalAccountCountOptions* Options
 ) {
-    EOS_LOG_API_ENTER();
-    return 0;
+    ConnectState* state = (ConnectState*)Handle;
+    if (!state || !state->platform || !Options || !Options->TargetUserId) return 0;
+    const char* puid = ((EOS_ProductUserIdDetails*)Options->TargetUserId)->id_string;
+    return social_bridge_external_account_by_puid(state->platform, puid, NULL, 0, NULL, 0) ? 1u : 0u;
 }
 
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Connect_CopyProductUserExternalAccountByIndex(
@@ -947,9 +1089,16 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Connect_CopyProductUserExternalAccountByIndex(
     const EOS_Connect_CopyProductUserExternalAccountByIndexOptions* Options,
     EOS_Connect_ExternalAccountInfo** OutExternalAccountInfo
 ) {
-    EOS_LOG_API_ENTER();
-    EOS_LOG_WARN("CopyProductUserExternalAccountByIndex not supported in LAN emulator");
-    return EOS_NotFound;
+    // We report exactly one external account (Steam) via GetProductUserExternalAccountCount,
+    // so index 0 returns it and anything else is out of range.
+    if (!OutExternalAccountInfo) return EOS_InvalidParameters;
+    *OutExternalAccountInfo = NULL;
+    if (!Options || Options->ExternalAccountInfoIndex != 0) return EOS_NotFound;
+    ConnectState* state = (ConnectState*)Handle;
+    EOS_Connect_ExternalAccountInfo* info = build_ext_account(state ? state->platform : NULL, Options->TargetUserId);
+    if (!info) return EOS_NotFound;
+    *OutExternalAccountInfo = info;
+    return EOS_Success;
 }
 
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Connect_CopyProductUserExternalAccountByAccountType(
@@ -957,9 +1106,14 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Connect_CopyProductUserExternalAccountByAccoun
     const EOS_Connect_CopyProductUserExternalAccountByAccountTypeOptions* Options,
     EOS_Connect_ExternalAccountInfo** OutExternalAccountInfo
 ) {
-    EOS_LOG_API_ENTER();
-    EOS_LOG_WARN("CopyProductUserExternalAccountByAccountType not supported in LAN emulator");
-    return EOS_NotFound;
+    if (!OutExternalAccountInfo) return EOS_InvalidParameters;
+    *OutExternalAccountInfo = NULL;
+    if (!Options || Options->AccountIdType != EOS_EAT_STEAM) return EOS_NotFound;  // only Steam known on LAN
+    ConnectState* state = (ConnectState*)Handle;
+    EOS_Connect_ExternalAccountInfo* info = build_ext_account(state ? state->platform : NULL, Options->TargetUserId);
+    if (!info) return EOS_NotFound;
+    *OutExternalAccountInfo = info;
+    return EOS_Success;
 }
 
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Connect_CopyProductUserExternalAccountByAccountId(
@@ -977,9 +1131,16 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Connect_CopyProductUserInfo(
     const EOS_Connect_CopyProductUserInfoOptions* Options,
     EOS_Connect_ExternalAccountInfo** OutExternalAccountInfo
 ) {
-    EOS_LOG_API_ENTER();
-    EOS_LOG_WARN("CopyProductUserInfo not supported in LAN emulator");
-    return EOS_NotFound;
+    // Info for the external account the user most recently logged in with — on LAN
+    // that's their Steam account (via goldberg).
+    if (!OutExternalAccountInfo) return EOS_InvalidParameters;
+    *OutExternalAccountInfo = NULL;
+    ConnectState* state = (ConnectState*)Handle;
+    EOS_Connect_ExternalAccountInfo* info = build_ext_account(state ? state->platform : NULL,
+                                                              Options ? Options->TargetUserId : NULL);
+    if (!info) return EOS_NotFound;
+    *OutExternalAccountInfo = info;
+    return EOS_Success;
 }
 
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Connect_CopyIdToken(
@@ -1114,8 +1275,10 @@ EOS_DECLARE_FUNC(void) EOS_ProductUserIdDetails_Release(EOS_ProductUserId UserId
 }
 
 EOS_DECLARE_FUNC(void) EOS_Connect_ExternalAccountInfo_Release(EOS_Connect_ExternalAccountInfo* ExternalAccountInfo) {
-    // No-op in LAN emulator as we never allocate these
-    (void)ExternalAccountInfo;
+    // CopyProductUserInfo / CopyProductUserExternalAccountBy* now allocate a single
+    // block with the info struct FIRST (see build_ext_account), so freeing the info
+    // pointer frees the whole thing.
+    if (ExternalAccountInfo) free(ExternalAccountInfo);
 }
 
 EOS_DECLARE_FUNC(void) EOS_Connect_IdToken_Release(EOS_Connect_IdToken* IdToken) {

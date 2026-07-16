@@ -664,8 +664,19 @@ Session* discovery_get_sessions(DiscoveryService* ds, int* out_count) {
     *out_count = ds->cache_count;
     if (ds->cache_count == 0) return NULL;
 
-    // Return pointer to first session in cache
+    // Return pointer to first session in cache. NOTE: unsafe to index as a
+    // Session[] — the backing array is CachedSession[]. See header + the
+    // discovery_get_session_at() accessor. Retained only for source compat.
     return &ds->cache[0].session;
+}
+
+int discovery_get_session_count(DiscoveryService* ds) {
+    return ds ? ds->cache_count : 0;
+}
+
+const Session* discovery_get_session_at(DiscoveryService* ds, int index) {
+    if (!ds || index < 0 || index >= ds->cache_count) return NULL;
+    return &ds->cache[index].session;  // correct CachedSession stride
 }
 
 const Session* discovery_find_cached_session(DiscoveryService* ds, const char* session_id) {

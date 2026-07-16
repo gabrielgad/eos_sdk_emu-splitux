@@ -295,13 +295,14 @@ EOS_DECLARE_FUNC(void) EOS_SessionSearch_Find(
             usleep(100000);  // 100ms
             #endif
 
-            // Copy discovered sessions from discovery cache to state array
-            int discovered_count = 0;
-            Session* discovered = discovery_get_sessions(state->discovery, &discovered_count);
+            // Copy discovered sessions from discovery cache to state array. Use the
+            // correctly-strided accessor (cache is CachedSession[], not Session[]).
+            int discovered_count = discovery_get_session_count(state->discovery);
             state->discovered_session_count = (discovered_count > MAX_DISCOVERED_SESSIONS)
                 ? MAX_DISCOVERED_SESSIONS : discovered_count;
             for (int j = 0; j < state->discovered_session_count; j++) {
-                state->discovered_sessions[j] = discovered[j];
+                const Session* d = discovery_get_session_at(state->discovery, j);
+                if (d) state->discovered_sessions[j] = *d;
             }
 
             if (state->discovered_session_count > 0) {

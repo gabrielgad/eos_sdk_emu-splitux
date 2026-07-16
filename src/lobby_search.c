@@ -74,6 +74,15 @@ static bool lobby_matches_param(const Lobby* lobby, const LobbySearchParameter* 
             switch (param->comparison) {
                 case EOS_CO_EQUAL: return cmp == 0;
                 case EOS_CO_NOTEQUAL: return cmp != 0;
+                // Redpoint EOS's friend-join searches a lobby by
+                // `UserId ANYOF <friendId>` (comparison=7). With a single-valued
+                // search param, ANYOF/ONEOF reduce to equality (and their negations
+                // to inequality). Without these the string match hit `default` and
+                // rejected every lobby, so the host never surfaced to the joiner.
+                case EOS_CO_ANYOF:
+                case EOS_CO_ONEOF: return cmp == 0;
+                case EOS_CO_NOTANYOF:
+                case EOS_CO_NOTONEOF: return cmp != 0;
                 case EOS_CO_CONTAINS: return strstr(attr->value.as_string, param->value.as_string) != NULL;
                 // EOS_CO_NOTCONTAINS not in SDK, skip
                 default: return false;

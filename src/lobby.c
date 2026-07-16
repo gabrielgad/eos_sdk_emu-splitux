@@ -504,7 +504,6 @@ void lobby_tick(LobbyState* state) {
     bool should_broadcast_now;
     uint64_t now;
     int cache_count = 0;
-    Session* cache;
     int c;
 
     if (!state || state->magic != LOBBY_STATE_MAGIC || !state->discovery) {
@@ -537,13 +536,18 @@ void lobby_tick(LobbyState* state) {
      * lazily-parsed owner_id pointer can escape into LobbyDetails/search-result
      * snapshots, so it must stay valid for the life of those handles. The owner
      * ProductUserId is therefore parsed at most once per distinct lobby. */
-    cache = discovery_get_sessions(state->discovery, &cache_count);
+    cache_count = discovery_get_session_count(state->discovery);
     for (c = 0; c < cache_count; c++) {
         Lobby cand;
         Lobby* slot = NULL;
         int i;
+        /* Correctly-strided access: the cache is CachedSession[], not Session[].
+         * Indexing a Session* array here read misaligned garbage past index 0
+         * (cache[0]'s source_ip leaking in as a bogus '127.0.0.1' lobby id). */
+        const Session* cs = discovery_get_session_at(state->discovery, c);
+        if (!cs) continue;
 
-        session_to_lobby(&cache[c], &cand);
+        session_to_lobby(cs, &cand);
 
         /* Skip echoes of our own lobbies. */
         if (find_local_lobby_by_id(state, cand.lobby_id)) {

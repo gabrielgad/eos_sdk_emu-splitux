@@ -39,8 +39,21 @@ void discovery_poll(DiscoveryService* ds);
 
 /**
  * Get discovered sessions.
+ *
+ * DEPRECATED / UNSAFE: returns &cache[0].session into a CachedSession[] array
+ * (Session + source_ip + received_at), so callers that index the result as a
+ * Session[] read MISALIGNED garbage for every entry past index 0 — cache[0]'s
+ * source_ip ("127.0.0.1") leaks in as the next entry's session_id, producing a
+ * bogus lobby/session that masks the real peer (an arrival-order race). Use the
+ * correctly-strided accessors below instead.
  */
 Session* discovery_get_sessions(DiscoveryService* ds, int* out_count);
+
+/** Number of sessions currently in the discovery cache. */
+int discovery_get_session_count(DiscoveryService* ds);
+
+/** Correctly-strided access to cached session [index], or NULL if out of range. */
+const Session* discovery_get_session_at(DiscoveryService* ds, int index);
 
 /**
  * Find a single discovered session by its session_id in the live cache, or NULL.

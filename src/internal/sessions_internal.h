@@ -262,4 +262,10 @@ const char* social_bridge_resolve_epic_by_steam(const char* steam_id);
 // game can turn a session owner's puid back into an Epic account during a join.
 const char* social_bridge_resolve_epic_by_puid(PlatformState* platform, const char* puid);
 
+// Steam external account (id + display name) by ProductUserId. Returns 1 + fills
+// out_steam/out_name (either may be NULL) when a Steam account is known, else 0.
+int social_bridge_external_account_by_puid(PlatformState* platform, const char* puid,
+                                           char* out_steam, int steam_sz,
+                                           char* out_name, int name_sz);
+
 #endif // EOS_LAN_SESSIONS_INTERNAL_H

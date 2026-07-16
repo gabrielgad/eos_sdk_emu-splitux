@@ -215,7 +215,13 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_RemoveAttribute(
         }
     }
 
-    return EOS_NotFound;
+    // Staging a removal of an attribute that isn't present is a no-op SUCCESS in
+    // the real SDK — RemoveAttribute only records intent, it can't know the
+    // authoritative backend state at stage time. Returning EOS_NotFound here made
+    // Redpoint EOS's FLobbyRoomProviderUpdateOperation::RemoveAttribute treat the
+    // whole presence-room update as failed (e.g. removing 'AdvertisedSessionId'),
+    // so it rescheduled forever and the game hung on the "logging in" screen.
+    return EOS_Success;
 }
 
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_AddMemberAttribute(
@@ -292,7 +298,8 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_RemoveMemberAttribute(
         }
     }
 
-    return EOS_NotFound;
+    // Same staging no-op semantics as RemoveAttribute above: absent key -> Success.
+    return EOS_Success;
 }
 
 EOS_DECLARE_FUNC(void) EOS_LobbyModification_Release(EOS_HLobbyModification Handle) {
