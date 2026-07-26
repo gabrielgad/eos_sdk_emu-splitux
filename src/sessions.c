@@ -378,6 +378,26 @@ EOS_DECLARE_FUNC(void) EOS_Sessions_UpdateSession(
 
         // Apply modifications
         *existing = mod->session;
+
+        // Re-assert the fields the CREATE branch owns. `*existing = mod->session`
+        // is a wholesale copy, so every field the modification does not carry gets
+        // clobbered with whatever the mod struct happens to hold — the same trap
+        // that silently reset host_address (re-stamped just below).
+        //
+        // `valid` is the load-bearing one: NOTHING ever sets mod->session.valid, so
+        // the copy always wrote false. The periodic advertise in sessions_tick is
+        // gated on `s->valid && s->state == EOS_OSS_Pending`, so the FIRST
+        // UpdateSession after the host finished loading (the one that adds gameplay
+        // attributes) permanently stopped the host announcing. Only the one-shot
+        // broadcast at the end of this function and query-triggered replies kept
+        // working, which is why the host was discoverable if the joiner happened to
+        // search BEFORE that update and invisible in friends/public afterwards —
+        // an arrival-order coin flip, not a network fault.
+        // Measured 2026-07-26: 52k sessions_tick runs across a 10-minute co-op
+        // window produced ZERO periodic session announces, while lobby_tick — same
+        // 2000ms interval, no valid gate — announced every 2s throughout.
+        existing->valid = true;
+        existing->state = EOS_OSS_Pending;
         existing->last_updated = get_time_ms();
 
         // Re-stamp our REAL P2P listen endpoint. The game's SessionModification
